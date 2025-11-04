@@ -556,6 +556,11 @@ function handleSearch(query) {
 
 function clearSearch() {
     AppState.filters.searchQuery = '';
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    displaySearchBar(); // Re-render to remove the clear button
     applyFilters();
 }
 
@@ -600,7 +605,8 @@ function applyFilters() {
     AppState.filteredPapers = filtered;
     displayPapers();
     displayFilters();
-    displaySearchBar();
+    // Don't re-render search bar during search to maintain input focus
+    // displaySearchBar();
     displayDatePicker();
 }
 
