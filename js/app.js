@@ -17,7 +17,8 @@ const AppState = {
     },
     favorites: JSON.parse(localStorage.getItem('favorites')) || {},
     favoritesFolders: JSON.parse(localStorage.getItem('favoritesFolders')) || ['Default'],
-    updateInfo: null
+    updateInfo: null,
+    language: localStorage.getItem('preferredLanguage') || 'Chinese'
 };
 
 // Data loading functions
@@ -36,56 +37,54 @@ async function loadPapers() {
     const availableDates = [];
     
     try {
-        const updateResponse = await fetch('data/cache/update.json');
-        const updateInfo = await updateResponse.json();
+        // Load file list from file-list.txt
+        const fileListResponse = await fetch('data/cache/file-list.txt');
+        const fileListText = await fileListResponse.text();
         
-        for (const source of updateInfo.message) {
-            if (source.total_papers > 0) {
-                const outputFile = source.output_file.replace(/\\/g, '/');
+        // Parse file list (one file per line)
+        const files = fileListText.trim().split('\n')
+            .map(line => line.trim())
+            .filter(line => line && line.endsWith('.jsonl'));
+        
+        for (const fileName of files) {
+            // Extract date from filename (e.g., "2025-11-03_nature.jsonl" -> "2025-11-03")
+            const dateMatch = fileName.match(/(\d{4}-\d{2}-\d{2})/);
+            const fileDate = dateMatch ? dateMatch[1] : null;
+            
+            if (fileDate && !availableDates.includes(fileDate)) {
+                availableDates.push(fileDate);
+            }
+            
+            // Try to load AI enhanced version first
+            const baseName = fileName.replace('.jsonl', '');
+            const enhancedPath = `data/${baseName}_AI_enhanced_${AppState.language}.jsonl`;
+            const originalPath = `data/${fileName}`;
+            
+            try {
+                let response = await fetch(enhancedPath);
+                let loadedFrom = enhancedPath;
                 
-                // Extract date from filename (e.g., "data/2025-11-03_nature.jsonl" -> "2025-11-03")
-                const dateMatch = outputFile.match(/(\d{4}-\d{2}-\d{2})/);
-                const fileDate = dateMatch ? dateMatch[1] : null;
-                
-                if (fileDate && !availableDates.includes(fileDate)) {
-                    availableDates.push(fileDate);
+                if (!response.ok) {
+                    // Fallback to original file
+                    response = await fetch(originalPath);
+                    loadedFrom = originalPath;
                 }
                 
-                // Try to load AI enhanced version first
-                const basePath = outputFile.replace('.jsonl', '');
-                const enhancedPath = `${basePath}_AI_enhanced_Chinese.jsonl`;
-                
-                try {
-                    const response = await fetch(enhancedPath);
-                    if (response.ok) {
-                        const text = await response.text();
-                        const lines = text.trim().split('\n');
-                        for (const line of lines) {
-                            if (line.trim()) {
-                                const paper = JSON.parse(line);
-                                // Add file date to paper object
-                                paper.fileDate = fileDate;
-                                papers.push(paper);
-                            }
+                if (response.ok) {
+                    const text = await response.text();
+                    const lines = text.trim().split('\n');
+                    for (const line of lines) {
+                        if (line.trim()) {
+                            const paper = JSON.parse(line);
+                            // Add file date to paper object
+                            paper.fileDate = fileDate;
+                            papers.push(paper);
                         }
-                        console.log(`Loaded ${lines.length} papers from ${enhancedPath} (date: ${fileDate})`);
-                    } else {
-                        // Fallback to original file
-                        const origResponse = await fetch(outputFile);
-                        const text = await origResponse.text();
-                        const lines = text.trim().split('\n');
-                        for (const line of lines) {
-                            if (line.trim()) {
-                                const paper = JSON.parse(line);
-                                paper.fileDate = fileDate;
-                                papers.push(paper);
-                            }
-                        }
-                        console.log(`Loaded ${lines.length} papers from ${outputFile} (date: ${fileDate})`);
                     }
-                } catch (error) {
-                    console.error(`Failed to load papers from ${enhancedPath}:`, error);
+                    console.log(`Loaded ${lines.length} papers from ${loadedFrom} (date: ${fileDate})`);
                 }
+            } catch (error) {
+                console.error(`Failed to load papers from ${fileName}:`, error);
             }
         }
         
@@ -170,71 +169,45 @@ function displayPapers() {
     const container = document.getElementById('papers-container');
     if (!container) return;
     
-    // Sort papers by score.max in descending order
+    // Sort all papers by score.max in descending order
     const sortedPapers = [...AppState.filteredPapers].sort((a, b) => {
         const scoreA = a.score && a.score.max ? a.score.max : 0;
         const scoreB = b.score && b.score.max ? b.score.max : 0;
         return scoreB - scoreA;
     });
     
-    // Group papers by file date
-    const papersByDate = {};
+    let html = '<div class="cards-container">';
+    
     sortedPapers.forEach(paper => {
-        const date = paper.fileDate || 'Unknown';
-        if (!papersByDate[date]) {
-            papersByDate[date] = [];
-        }
-        papersByDate[date].push(paper);
-    });
-    
-    // Sort dates descending
-    const sortedDates = Object.keys(papersByDate).sort((a, b) => b.localeCompare(a));
-    
-    let html = '';
-    sortedDates.forEach(date => {
-        const papers = papersByDate[date];
-        html += `
-            <div class="date-section">
-                <div class="date-header">
-                    <i class="fa-solid fa-calendar-day"></i>
-                    <h3>${date}</h3>
-                    <span class="paper-count">${papers.length} papers</span>
-                </div>
-                <div class="cards-container">
-        `;
-        
-        papers.forEach(paper => {
-            const collection = paper.collection && paper.collection.length > 0 ? paper.collection[0] : 'Uncategorized';
-            const authors = paper.authors ? paper.authors.slice(0, 3).join(', ') + (paper.authors.length > 3 ? ', et al.' : '') : 'Unknown';
-            const tldr = paper.AI && paper.AI.tldr && paper.AI.tldr !== 'Error' && paper.AI.tldr !== 'Skip' ? paper.AI.tldr : 'No summary available';
-            const isFavorite = isInFavorites(paper.id);
-            const score = paper.score && paper.score.max ? paper.score.max.toFixed(2) : 'N/A';
-            
-            html += `
-                <div class="card" data-paper-id="${paper.id}">
-                    <div class="favorite-icon ${isFavorite ? 'favorited' : ''}" onclick="toggleFavorite(event, '${paper.id}')">
-                        <i class="fa-${isFavorite ? 'solid' : 'regular'} fa-star"></i>
-                    </div>
-                    <div class="card-content">
-                        <div class="card-tag">${collection}</div>
-                        <div class="card-score">Score: ${score}</div>
-                        <h2>${paper.title}</h2>
-                        <p class="paper-authors">${authors}</p>
-                        <p class="paper-summary">${tldr}</p>
-                        <div class="card-footer">
-                            <button class="card-button" onclick="showPaperDetails('${paper.id}')">See More</button>
-                            <div class="card-icon">→</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
+        const collection = paper.collection && paper.collection.length > 0 ? paper.collection[0] : 'Uncategorized';
+        const authors = paper.authors ? paper.authors.slice(0, 3).join(', ') + (paper.authors.length > 3 ? ', et al.' : '') : 'Unknown';
+        const tldr = paper.AI && paper.AI.tldr && paper.AI.tldr !== 'Error' && paper.AI.tldr !== 'Skip' ? paper.AI.tldr : 'No summary available';
+        const isFavorite = isInFavorites(paper.id);
+        const score = paper.score && paper.score.max ? paper.score.max.toFixed(2) : 'N/A';
+        const fileDate = paper.fileDate || 'Unknown';
         
         html += `
+            <div class="card" data-paper-id="${paper.id}">
+                <div class="favorite-icon ${isFavorite ? 'favorited' : ''}" onclick="toggleFavorite(event, '${paper.id}')">
+                    <i class="fa-${isFavorite ? 'solid' : 'regular'} fa-star"></i>
+                </div>
+                <div class="card-content">
+                    <div class="card-date">${fileDate}</div>
+                    <div class="card-tag">${collection}</div>
+                    <div class="card-score">Score: ${score}</div>
+                    <h2>${paper.title}</h2>
+                    <p class="paper-authors">${authors}</p>
+                    <p class="paper-summary">${tldr}</p>
+                    <div class="card-footer">
+                        <button class="card-button" onclick="showPaperDetails('${paper.id}')">See More</button>
+                        <div class="card-icon">→</div>
+                    </div>
                 </div>
             </div>
         `;
     });
+    
+    html += '</div>';
     
     container.innerHTML = html || '<div class="no-papers">No papers found matching your filters.</div>';
 }
@@ -983,7 +956,35 @@ function navigateTo(page) {
             displayPapers();
         } else if (page === 'favorites') {
             displayFavorites();
+        } else if (page === 'settings') {
+            loadSettingsPage();
         }
+    }
+}
+
+// Settings page functions
+function loadSettingsPage() {
+    const currentLanguage = AppState.language;
+    const radioButtons = document.querySelectorAll('input[name="language"]');
+    radioButtons.forEach(radio => {
+        radio.checked = radio.value === currentLanguage;
+    });
+}
+
+function saveLanguagePreference() {
+    const selectedLanguage = document.querySelector('input[name="language"]:checked').value;
+    
+    if (selectedLanguage !== AppState.language) {
+        AppState.language = selectedLanguage;
+        localStorage.setItem('preferredLanguage', selectedLanguage);
+        
+        // Show success message
+        alert(`Language preference saved: ${selectedLanguage}\n\nThe page will reload to apply changes.`);
+        
+        // Reload papers with new language
+        location.reload();
+    } else {
+        alert('Language preference saved!');
     }
 }
 

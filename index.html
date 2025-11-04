@@ -105,12 +105,38 @@
             <div id="settings-page" class="page-content">
                 <header class="page-header">
                     <h1>Settings</h1>
-                    <p class="subtitle">Coming soon</p>
+                    <p class="subtitle">Customize your preferences</p>
                 </header>
-                <div class="coming-soon">
-                    <i class="fa-solid fa-cog"></i>
-                    <h2>Under Construction</h2>
-                    <p>Settings features are being developed</p>
+                <div class="settings-container">
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <i class="fa-solid fa-language"></i>
+                            <h3>Language Preference</h3>
+                        </div>
+                        <div class="settings-content">
+                            <p class="settings-description">Select the language for AI-generated summaries</p>
+                            <div class="language-options">
+                                <label class="language-option">
+                                    <input type="radio" name="language" value="Chinese" checked>
+                                    <span class="language-label">
+                                        <i class="fa-solid fa-check-circle"></i>
+                                        <span>Chinese (中文)</span>
+                                    </span>
+                                </label>
+                                <label class="language-option">
+                                    <input type="radio" name="language" value="English">
+                                    <span class="language-label">
+                                        <i class="fa-solid fa-check-circle"></i>
+                                        <span>English</span>
+                                    </span>
+                                </label>
+                            </div>
+                            <button class="save-settings-btn" onclick="saveLanguagePreference()">
+                                <i class="fa-solid fa-save"></i>
+                                Save Settings
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>

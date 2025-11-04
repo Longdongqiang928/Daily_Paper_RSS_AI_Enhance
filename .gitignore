@@ -12,5 +12,7 @@ build/
 .env
 data/*.jsonl
 data/cache/*.json
+data/
+data/cache
 logs/
 *.log
