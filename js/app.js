@@ -5,6 +5,11 @@ const AppState = {
     currentPage: 'home',
     selectedDates: new Set(),
     availableDates: [],
+    calendarMode: 'single', // 'single' or 'range'
+    calendarRangeStart: null,
+    calendarRangeEnd: null,
+    currentCalendarMonth: new Date().getMonth(),
+    currentCalendarYear: new Date().getFullYear(),
     filters: {
         journals: new Set(),
         collections: new Set(),
@@ -165,9 +170,16 @@ function displayPapers() {
     const container = document.getElementById('papers-container');
     if (!container) return;
     
+    // Sort papers by score.max in descending order
+    const sortedPapers = [...AppState.filteredPapers].sort((a, b) => {
+        const scoreA = a.score && a.score.max ? a.score.max : 0;
+        const scoreB = b.score && b.score.max ? b.score.max : 0;
+        return scoreB - scoreA;
+    });
+    
     // Group papers by file date
     const papersByDate = {};
-    AppState.filteredPapers.forEach(paper => {
+    sortedPapers.forEach(paper => {
         const date = paper.fileDate || 'Unknown';
         if (!papersByDate[date]) {
             papersByDate[date] = [];
@@ -196,6 +208,7 @@ function displayPapers() {
             const authors = paper.authors ? paper.authors.slice(0, 3).join(', ') + (paper.authors.length > 3 ? ', et al.' : '') : 'Unknown';
             const tldr = paper.AI && paper.AI.tldr && paper.AI.tldr !== 'Error' && paper.AI.tldr !== 'Skip' ? paper.AI.tldr : 'No summary available';
             const isFavorite = isInFavorites(paper.id);
+            const score = paper.score && paper.score.max ? paper.score.max.toFixed(2) : 'N/A';
             
             html += `
                 <div class="card" data-paper-id="${paper.id}">
@@ -204,6 +217,7 @@ function displayPapers() {
                     </div>
                     <div class="card-content">
                         <div class="card-tag">${collection}</div>
+                        <div class="card-score">Score: ${score}</div>
                         <h2>${paper.title}</h2>
                         <p class="paper-authors">${authors}</p>
                         <p class="paper-summary">${tldr}</p>
@@ -283,55 +297,261 @@ function displaySearchBar() {
     const searchContainer = document.getElementById('search-container');
     if (!searchContainer) return;
     
+    // Display selected dates summary
+    let selectedText = 'All Dates';
+    if (AppState.selectedDates.size > 0) {
+        const dates = Array.from(AppState.selectedDates).sort();
+        if (AppState.calendarMode === 'range' && dates.length > 1) {
+            selectedText = `${dates[0]} to ${dates[dates.length - 1]}`;
+        } else if (dates.length === 1) {
+            selectedText = dates[0];
+        } else {
+            selectedText = `${dates.length} dates selected`;
+        }
+    }
+    
     searchContainer.innerHTML = `
-        <div class="search-box">
-            <i class="fa-solid fa-search"></i>
-            <input type="text" id="search-input" placeholder="Search papers by title, authors, or keywords..." 
-                   value="${AppState.filters.searchQuery}" oninput="handleSearch(this.value)">
-            ${AppState.filters.searchQuery ? '<i class="fa-solid fa-times clear-search" onclick="clearSearch()"></i>' : ''}
+        <div class="search-and-date-container">
+            <div class="search-box">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" id="search-input" placeholder="Search papers by title, authors, or keywords..." 
+                       value="${AppState.filters.searchQuery}" oninput="handleSearch(this.value)">
+                ${AppState.filters.searchQuery ? '<i class="fa-solid fa-times clear-search" onclick="clearSearch()"></i>' : ''}
+            </div>
+            <div class="date-picker-button-container">
+                <button class="calendar-trigger-btn" onclick="openCalendarModal()">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>${selectedText}</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                ${AppState.selectedDates.size > 0 ? `
+                    <button class="clear-dates-btn" onclick="clearAllDates()">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                ` : ''}
+            </div>
         </div>
     `;
 }
 
 function displayDatePicker() {
-    const datePickerContainer = document.getElementById('date-picker-container');
-    if (!datePickerContainer) return;
+    // Date picker is now part of the search bar
+    // This function is kept for compatibility but does nothing
+}
+
+function openCalendarModal() {
+    const modal = document.getElementById('calendar-modal');
+    const modalContent = document.getElementById('calendar-modal-content');
+    
+    // Initialize calendar to current month if no dates selected
+    if (AppState.selectedDates.size > 0) {
+        const firstDate = Array.from(AppState.selectedDates).sort()[0];
+        const dateObj = new Date(firstDate);
+        AppState.currentCalendarMonth = dateObj.getMonth();
+        AppState.currentCalendarYear = dateObj.getFullYear();
+    }
+    
+    renderCalendar();
+    modal.classList.add('active');
+}
+
+function closeCalendarModal() {
+    const modal = document.getElementById('calendar-modal');
+    modal.classList.remove('active');
+}
+
+function renderCalendar() {
+    const modalContent = document.getElementById('calendar-modal-content');
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    const firstDay = new Date(AppState.currentCalendarYear, AppState.currentCalendarMonth, 1);
+    const lastDay = new Date(AppState.currentCalendarYear, AppState.currentCalendarMonth + 1, 0);
+    const prevLastDay = new Date(AppState.currentCalendarYear, AppState.currentCalendarMonth, 0);
+    
+    const firstDayOfWeek = firstDay.getDay();
+    const lastDate = lastDay.getDate();
+    const prevLastDate = prevLastDay.getDate();
     
     let html = `
-        <div class="date-picker-section">
-            <div class="date-picker-header">
-                <i class="fa-solid fa-calendar-days"></i>
-                <h3>Select Dates</h3>
-                <button class="select-all-btn" onclick="selectAllDates()">
-                    ${AppState.selectedDates.size === AppState.availableDates.length ? 'Deselect All' : 'Select All'}
-                </button>
-            </div>
-            <div class="date-picker-grid">
+        <div class="calendar-modal-header">
+            <h2>Select Date</h2>
+            <button class="modal-close" onclick="closeCalendarModal()">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="calendar-controls">
+            <button class="calendar-nav-btn" onclick="previousMonth()">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="calendar-month-year">
+                <select class="month-select" onchange="changeMonth(this.value)">
     `;
     
-    AppState.availableDates.forEach(date => {
-        const isSelected = AppState.selectedDates.has(date) || AppState.selectedDates.size === 0;
-        const dateObj = new Date(date);
-        const monthShort = dateObj.toLocaleDateString('en-US', { month: 'short' });
-        const day = dateObj.getDate();
-        const year = dateObj.getFullYear();
-        
-        html += `
-            <div class="date-chip ${isSelected ? 'selected' : ''}" onclick="toggleDate('${date}')">
-                <div class="date-chip-month">${monthShort}</div>
-                <div class="date-chip-day">${day}</div>
-                <div class="date-chip-year">${year}</div>
-                <i class="fa-solid fa-check date-chip-check"></i>
-            </div>
-        `;
+    monthNames.forEach((month, index) => {
+        html += `<option value="${index}" ${index === AppState.currentCalendarMonth ? 'selected' : ''}>${month}</option>`;
     });
     
     html += `
+                </select>
+                <input type="number" class="year-input" value="${AppState.currentCalendarYear}" 
+                       onchange="changeYear(this.value)" min="2020" max="2030">
             </div>
+            <button class="calendar-nav-btn" onclick="nextMonth()">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+        <div class="calendar-weekdays">
+            <div class="weekday">Sun</div>
+            <div class="weekday">Mon</div>
+            <div class="weekday">Tue</div>
+            <div class="weekday">Wed</div>
+            <div class="weekday">Thu</div>
+            <div class="weekday">Fri</div>
+            <div class="weekday">Sat</div>
+        </div>
+        <div class="calendar-days">
+    `;
+    
+    // Previous month's days
+    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+        const day = prevLastDate - i;
+        html += `<div class="calendar-day prev-month">${day}</div>`;
+    }
+    
+    // Current month's days
+    for (let day = 1; day <= lastDate; day++) {
+        const dateStr = `${AppState.currentCalendarYear}-${String(AppState.currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isAvailable = AppState.availableDates.includes(dateStr);
+        const isSelected = AppState.selectedDates.has(dateStr);
+        const isInRange = isDateInRange(dateStr);
+        
+        let classes = 'calendar-day';
+        if (!isAvailable) classes += ' disabled';
+        if (isSelected) classes += ' selected';
+        if (isInRange) classes += ' in-range';
+        
+        html += `
+            <div class="${classes}" onclick="${isAvailable ? `selectDate('${dateStr}')` : ''}">
+                ${day}
+                ${isAvailable ? '<div class="day-dot"></div>' : ''}
+            </div>
+        `;
+    }
+    
+    // Next month's days
+    const remainingDays = 42 - (firstDayOfWeek + lastDate);
+    for (let day = 1; day <= remainingDays; day++) {
+        html += `<div class="calendar-day next-month">${day}</div>`;
+    }
+    
+    html += `
+        </div>
+        <div class="calendar-footer">
+            <div class="calendar-mode-toggle">
+                <label class="toggle-label">
+                    <span>Range</span>
+                    <input type="checkbox" ${AppState.calendarMode === 'range' ? 'checked' : ''} 
+                           onchange="toggleCalendarMode(this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <button class="calendar-apply-btn" onclick="applyCalendarSelection()">
+                Apply
+            </button>
         </div>
     `;
     
-    datePickerContainer.innerHTML = html;
+    modalContent.innerHTML = html;
+}
+
+function isDateInRange(dateStr) {
+    if (AppState.calendarMode !== 'range' || AppState.selectedDates.size < 2) return false;
+    
+    const dates = Array.from(AppState.selectedDates).sort();
+    return dateStr >= dates[0] && dateStr <= dates[dates.length - 1];
+}
+
+function selectDate(dateStr) {
+    if (AppState.calendarMode === 'single') {
+        AppState.selectedDates.clear();
+        AppState.selectedDates.add(dateStr);
+    } else {
+        // Range mode
+        if (AppState.selectedDates.size === 0) {
+            AppState.selectedDates.add(dateStr);
+        } else if (AppState.selectedDates.size === 1) {
+            const firstDate = Array.from(AppState.selectedDates)[0];
+            if (dateStr === firstDate) {
+                AppState.selectedDates.delete(dateStr);
+            } else {
+                // Add all dates in range
+                const start = dateStr < firstDate ? dateStr : firstDate;
+                const end = dateStr < firstDate ? firstDate : dateStr;
+                
+                AppState.selectedDates.clear();
+                AppState.availableDates.forEach(date => {
+                    if (date >= start && date <= end) {
+                        AppState.selectedDates.add(date);
+                    }
+                });
+            }
+        } else {
+            // Reset and start new selection
+            AppState.selectedDates.clear();
+            AppState.selectedDates.add(dateStr);
+        }
+    }
+    renderCalendar();
+}
+
+function toggleCalendarMode(isRange) {
+    AppState.calendarMode = isRange ? 'range' : 'single';
+    if (!isRange && AppState.selectedDates.size > 1) {
+        const firstDate = Array.from(AppState.selectedDates).sort()[0];
+        AppState.selectedDates.clear();
+        AppState.selectedDates.add(firstDate);
+    }
+    renderCalendar();
+}
+
+function previousMonth() {
+    AppState.currentCalendarMonth--;
+    if (AppState.currentCalendarMonth < 0) {
+        AppState.currentCalendarMonth = 11;
+        AppState.currentCalendarYear--;
+    }
+    renderCalendar();
+}
+
+function nextMonth() {
+    AppState.currentCalendarMonth++;
+    if (AppState.currentCalendarMonth > 11) {
+        AppState.currentCalendarMonth = 0;
+        AppState.currentCalendarYear++;
+    }
+    renderCalendar();
+}
+
+function changeMonth(month) {
+    AppState.currentCalendarMonth = parseInt(month);
+    renderCalendar();
+}
+
+function changeYear(year) {
+    AppState.currentCalendarYear = parseInt(year);
+    renderCalendar();
+}
+
+function applyCalendarSelection() {
+    closeCalendarModal();
+    applyFilters();
+}
+
+function clearAllDates() {
+    AppState.selectedDates.clear();
+    applyFilters();
 }
 
 // Filter functions
@@ -435,7 +655,19 @@ function showPaperDetails(paperId) {
     const modalContent = document.getElementById('modal-content');
     
     const authors = paper.authors ? paper.authors.join(', ') : 'Unknown';
-    const collections = paper.collection ? paper.collection.join(', ') : 'None';
+    
+    // Build collections with scores
+    let collectionsWithScores = 'None';
+    if (paper.collection && paper.collection.length > 0) {
+        const collectionItems = paper.collection.map(collection => {
+            const score = paper.score && paper.score[collection] !== undefined 
+                ? paper.score[collection].toFixed(3) 
+                : 'N/A';
+            return `${collection}: ${score}`;
+        });
+        collectionsWithScores = collectionItems.join(', ');
+    }
+    
     const hasAI = paper.AI && typeof paper.AI === 'object' && paper.AI.tldr !== 'Error' && paper.AI.tldr !== 'Skip';
     
     let html = `
@@ -457,7 +689,7 @@ function showPaperDetails(paperId) {
                 </div>
                 <div class="meta-item">
                     <i class="fa-solid fa-folder"></i>
-                    <span><strong>Collections:</strong> ${collections}</span>
+                    <span><strong>Collections:</strong> ${collectionsWithScores}</span>
                 </div>
                 <div class="meta-item">
                     <i class="fa-solid fa-tag"></i>
@@ -772,6 +1004,9 @@ async function initApp() {
         }
         if (e.target.id === 'folder-modal') {
             closeFolderModal();
+        }
+        if (e.target.id === 'calendar-modal') {
+            closeCalendarModal();
         }
     });
     
