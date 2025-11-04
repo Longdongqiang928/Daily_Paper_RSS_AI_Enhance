@@ -51,6 +51,10 @@ async function loadPapers() {
             const dateMatch = fileName.match(/(\d{4}-\d{2}-\d{2})/);
             const fileDate = dateMatch ? dateMatch[1] : null;
             
+            // Extract source/journal from filename (e.g., "2025-11-03_nature.jsonl" -> "nature")
+            const sourceMatch = fileName.match(/\d{4}-\d{2}-\d{2}_([^.]+)\.jsonl/);
+            const source = sourceMatch ? sourceMatch[1] : 'unknown';
+            
             if (fileDate && !availableDates.includes(fileDate)) {
                 availableDates.push(fileDate);
             }
@@ -76,8 +80,9 @@ async function loadPapers() {
                     for (const line of lines) {
                         if (line.trim()) {
                             const paper = JSON.parse(line);
-                            // Add file date to paper object
+                            // Add file date and source to paper object
                             paper.fileDate = fileDate;
+                            paper.source = source;
                             papers.push(paper);
                         }
                     }
@@ -185,6 +190,8 @@ function displayPapers() {
         const isFavorite = isInFavorites(paper.id);
         const score = paper.score && paper.score.max ? paper.score.max.toFixed(2) : 'N/A';
         const fileDate = paper.fileDate || 'Unknown';
+        const source = paper.source || 'unknown';
+        const logoPath = `assets/${source}.png`;
         
         html += `
             <div class="card" data-paper-id="${paper.id}">
@@ -200,7 +207,7 @@ function displayPapers() {
                     <p class="paper-summary">${tldr}</p>
                     <div class="card-footer">
                         <button class="card-button" onclick="showPaperDetails('${paper.id}')">See More</button>
-                        <div class="card-icon">→</div>
+                        <img src="${logoPath}" alt="${source}" class="card-logo" onerror="this.style.display='none'">
                     </div>
                 </div>
             </div>
@@ -887,6 +894,8 @@ function displayFavorites() {
                     const collection = paper.collection && paper.collection.length > 0 ? paper.collection[0] : 'Uncategorized';
                     const authors = paper.authors ? paper.authors.slice(0, 3).join(', ') + (paper.authors.length > 3 ? ', et al.' : '') : 'Unknown';
                     const tldr = paper.AI && paper.AI.tldr && paper.AI.tldr !== 'Error' && paper.AI.tldr !== 'Skip' ? paper.AI.tldr : 'No summary available';
+                    const source = paper.source || 'unknown';
+                    const logoPath = `assets/${source}.png`;
                     
                     html += `
                         <div class="card" data-paper-id="${paper.id}">
@@ -900,7 +909,7 @@ function displayFavorites() {
                                 <p class="paper-summary">${tldr}</p>
                                 <div class="card-footer">
                                     <button class="card-button" onclick="showPaperDetails('${paper.id}')">See More</button>
-                                    <div class="card-icon">→</div>
+                                    <img src="${logoPath}" alt="${source}" class="card-logo" onerror="this.style.display='none'">
                                 </div>
                             </div>
                         </div>

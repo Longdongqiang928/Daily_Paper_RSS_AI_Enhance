@@ -423,6 +423,21 @@ body {
   color: var(--color-primary);
 }
 
+.card-logo {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.8;
+  transition: all 0.3s ease;
+  filter: brightness(0.9);
+}
+
+.card:hover .card-logo {
+  opacity: 1;
+  transform: scale(1.1);
+  filter: brightness(1);
+}
+
 /* Responsive Design */
 @media (min-width: 768px) {
   .cards-container {
