@@ -15,13 +15,6 @@ def parse_args():
         default='arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms+nphys+natrevphys+lsa+natmachintell',
         help='Comma-separated list of RSS sources:categories (e.g., arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton,science:science+sciadv)'
     )
-    current_time = datetime.now()
-    parser.add_argument(
-        '--output', 
-        type=str, 
-        default=current_time.strftime("%Y-%m-%d"), 
-        help='Base name for output files (without extension, e.g., "2025-10-31")'
-    )
     parser.add_argument(
         '--output-dir', 
         type=str, 
@@ -56,9 +49,11 @@ def parse_args():
     return parser.parse_args()
 
 def main(args):
-    rss_fetcher_main(args.output, args.output_dir, args.sources)
-    zotero_recommender_main(args.output, args.output_dir, args.embedding_model)
-    enhance_main(args.output, args.output_dir, args.model_name, args.language, args.max_workers)
+    current_time = datetime.now()
+    date = current_time.strftime("%Y-%m-%d")
+    rss_fetcher_main(date, args.output_dir, args.sources)
+    zotero_recommender_main(date, args.output_dir, args.embedding_model)
+    enhance_main(date, args.output_dir, args.model_name, args.language, args.max_workers)
 
     # Write list of files in data folder to file-list.txt
     data_dir = args.output_dir
