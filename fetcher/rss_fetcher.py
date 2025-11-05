@@ -512,7 +512,7 @@ class RSSFetcher:
 
 def get_abstract(source, article_dois):
     """
-    Extract the abstract of a official api.
+    Extract the abstract of a paper from an official API.
     
     Args:
         source: Source name (e.g., 'nature')
@@ -690,7 +690,10 @@ def process_source(source: str, categories: str, output_base: str, output_dir: s
             logger.debug(f"[{source}] DOIs to fetch: {dois_to_fetch}")
         
             if len(dois_to_fetch) == len(new_papers):
-                # new_papers =  get_abstract(source, dois_to_fetch)
+                # # Extract the abstract of an official api. Only implement for nature series
+                # new_papers =  get_abstract(source, dois_to_fetch)  
+                # Extract the abstract by a crawler.
+                # new_papers =  get_abstract_crawler(source, dois_to_fetch)  
                 result['new_papers_with_abs'] = len([p for p in new_papers if p['summary'] != ''])
                 logger.info(f"[{source}] Successfully fetched abstracts for {result['new_papers_with_abs']} out of {len(dois_to_fetch)} papers")
             else:
