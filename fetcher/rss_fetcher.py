@@ -222,7 +222,7 @@ class RSSFetcher:
                 'summary': entry.summary.split('\nAbstract: ')[-1],
                 'authors': authors,
                 'published': publish_date,
-                'category': entry.category,
+                'category': [entry.category],
             }
             papers.append(paper)
         
@@ -242,6 +242,7 @@ class RSSFetcher:
         categories = self.categories.split('+')
         
         for category in categories:
+            time.sleep(1)
             rss_url = f"{self.base_url}{category}.rss"
             logger.info(f"Fetching {self.source} RSS feed from: {rss_url}")
             
@@ -281,7 +282,7 @@ class RSSFetcher:
                     'summary': '',
                     'authors': authors,
                     'published': publish_date,
-                    'category': '',
+                    'category': [],
                 }
                 papers.append(paper)
         
@@ -301,6 +302,7 @@ class RSSFetcher:
         categories = self.categories.split('+')
         
         for category in categories:
+            time.sleep(1)
             rss_url = f"{self.base_url}{category}"
             logger.info(f"Fetching {self.source} RSS feed from: {rss_url}")
             
@@ -341,7 +343,7 @@ class RSSFetcher:
                     'summary': '',
                     'authors': authors,
                     'published': publish_date,
-                    'category': '',
+                    'category': [],
                 }
                 papers.append(paper)
         
@@ -361,6 +363,7 @@ class RSSFetcher:
         categories = self.categories.split('+')
         
         for category in categories:
+            time.sleep(1)
             rss_url = f"{self.base_url}{category}_feed.xml"
             logger.info(f"Fetching {self.source} RSS feed from: {rss_url}")
             
@@ -405,7 +408,7 @@ class RSSFetcher:
                     'summary': '',
                     'authors': authors,
                     'published': publish_date,
-                    'category': '',
+                    'category': [],
                 }
                 papers.append(paper)
         
@@ -425,6 +428,7 @@ class RSSFetcher:
         categories = self.categories.split('+')
         
         for category in categories:
+            time.sleep(1)
             rss_url = f"{self.base_url}{category}.xml"
             logger.info(f"Fetching {self.source} RSS feed from: {rss_url}")
             
@@ -452,21 +456,21 @@ class RSSFetcher:
                 publish_date = entry.prism_publicationdate if hasattr(entry, 'prism_publicationdate') else ''
                 publish_date = datetime.strptime(publish_date.split('+')[0], '%Y-%m-%dT%H:%M:%S').strftime("%Y-%m-%d")
                 
-                ################################## 'and' bug here
                 authors_p = [author.name for author in entry.authors] if hasattr(entry, 'authors') else []
                 authors = sum([author.split(', ') for author in authors_p], []) if authors_p else []
                 authors = [author for author in authors if author]  # Remove empty strings
+                if authors:
+                    if len(authors[-1])>4:
+                        if authors[-1][0:4] == 'and ':
+                            authors[-1] = authors[-1][4:] if authors[-1][0:4] == 'and ' else authors[-1]
 
                 subject = entry.prism_section if hasattr(entry, 'prism_section') else ''
-                subjects = subject.split(', ') if subject else ''
-                categories = []
-                for category in subjects:
-                    if 'and ' not in category:
-                        categories.append(category.strip())
-                    else:
-                        categories.append(subject[5:].strip())
+                categories = subject.split(', ') if subject else ''
                 categories = [category for category in categories if category]  # Remove empty strings
-                ################################## 'and' bug here
+                if categories:
+                    if len(categories[-1])>4:
+                        if categories[-1][0:4] == 'and ':
+                            categories[-1] = categories[-1][4:] 
                 
                 paper = {
                     'journal': entry.prism_publicationname if hasattr(entry, 'prism_publicationname') else '',
