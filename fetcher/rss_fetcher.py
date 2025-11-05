@@ -64,7 +64,7 @@ class RSSFetcher:
         cache_dir: Directory to store cache files
     """
     
-    SUPPORTED_SOURCES = ['arxiv', 'nature']
+    SUPPORTED_SOURCES = ['arxiv', 'nature', 'science', 'optica', 'aps']
     
     def __init__(self, source: str = 'arxiv', categories: str = '', cache_dir: str = "data/cache"):
         if source not in self.SUPPORTED_SOURCES:
@@ -91,6 +91,15 @@ class RSSFetcher:
         elif self.source == 'nature':
             self.base_url = "https://www.nature.com/"
             logger.debug(f"Configured Nature RSS base URL: {self.base_url}")
+        elif self.source == 'science':
+            self.base_url = "https://www.science.org/action/showFeed?type=etoc&feed=rss&jc="
+            logger.debug(f"Configured Science RSS base URL: {self.base_url}")
+        elif self.source == 'optica':
+            self.base_url = "https://opg.optica.org/rss/"
+            logger.debug(f"Configured Optica RSS base URL: {self.base_url}")
+        elif self.source == 'aps':
+            self.base_url = "https://feeds.aps.org/rss/recent/"
+            logger.debug(f"Configured APS RSS base URL: {self.base_url}")
         # Add more sources here in the future
         # Example for adding a new source:
         # elif self.source == 'science':
@@ -151,7 +160,12 @@ class RSSFetcher:
             return self._fetch_arxiv()
         elif self.source == 'nature':
             return self._fetch_nature()
-        # Add more sources here
+        elif self.source == 'science':
+            return self._fetch_science()
+        elif self.source == 'optica':
+            return self._fetch_optica()
+        elif self.source == 'aps':
+            return self._fetch_aps()
         # Example for adding a new source:
         # elif self.source == 'science':
         #     return self._fetch_science()
@@ -229,7 +243,7 @@ class RSSFetcher:
         
         for category in categories:
             rss_url = f"{self.base_url}{category}.rss"
-            logger.info(f"Fetching Nature RSS feed from: {rss_url}")
+            logger.info(f"Fetching {self.source} RSS feed from: {rss_url}")
             
             try:
                 response = requests.get(rss_url, timeout=30)
@@ -243,12 +257,20 @@ class RSSFetcher:
             
             for entry in feed.entries:
                 # Extract paper ID (format depends on source)
-                paper_id = entry.id.split('/')[-1]  # Adjust based on source
+                # paper_id = entry.prism_doi  # Adjust based on source
+                paper_id = entry.prism_doi  # Adjust based on source
                 
                 if paper_id in seen_ids:
                     continue
                 
                 seen_ids.add(paper_id)
+                logger.debug(f"Processing paper: {paper_id}")
+
+                publish_date = entry.updated if hasattr(entry, 'updated') else ''
+                
+                authors_p = [author.name for author in entry.authors] if hasattr(entry, 'authors') else []
+                authors = sum([author.split(', ') for author in authors_p], []) if authors_p else []
+                authors = [author for author in authors if author]  # Remove empty strings
                 
                 paper = {
                     'journal': entry.prism_publicationname if hasattr(entry, 'prism_publicationname') else '',
@@ -257,13 +279,209 @@ class RSSFetcher:
                     'abs': f"https://doi.org/{entry.prism_doi}",      # if RSS has no abstract use doi link
                     'title': entry.title,
                     'summary': '',
-                    'authors': [author.name for author in entry.authors] if hasattr(entry, 'authors') else [],
-                    'published': entry.updated if hasattr(entry, 'updated') else '',
+                    'authors': authors,
+                    'published': publish_date,
                     'category': '',
                 }
                 papers.append(paper)
         
-        logger.info(f"Successfully fetched {len(papers)} unique papers from Nature")
+        logger.info(f"Successfully fetched {len(papers)} unique papers from {self.source}")
+        return papers
+
+    def _fetch_science(self) -> List[Dict]:
+        """
+        Fetch papers from Science RSS feed.
+        
+        Returns:
+            List of paper dictionaries with Science-specific fields
+        """
+        papers = []
+        seen_ids = set()
+
+        categories = self.categories.split('+')
+        
+        for category in categories:
+            rss_url = f"{self.base_url}{category}"
+            logger.info(f"Fetching {self.source} RSS feed from: {rss_url}")
+            
+            try:
+                response = requests.get(rss_url, timeout=30)
+                response.raise_for_status()
+                logger.debug(f"RSS feed fetched successfully, status code: {response.status_code}")
+            except requests.RequestException as e:
+                logger.error(f"Failed to fetch RSS feed: {e}")
+                raise
+            
+            feed = feedparser.parse(response.content)
+            
+            for entry in feed.entries:
+                # Extract paper ID (format depends on source)
+                # paper_id = entry.prism_doi  # Adjust based on source
+                paper_id = entry.prism_doi  # Adjust based on source
+                
+                if paper_id in seen_ids:
+                    continue
+                
+                seen_ids.add(paper_id)
+                logger.debug(f"Processing paper: {paper_id}")
+
+                publish_date = entry.updated if hasattr(entry, 'updated') else ''
+                publish_date = datetime.strptime(publish_date, '%Y-%m-%dT%H:%M:%SZ').strftime("%Y-%m-%d")
+                
+                authors_p = [author.name for author in entry.authors] if hasattr(entry, 'authors') else []
+                authors = sum([author.split(', ') for author in authors_p], []) if authors_p else []
+                authors = [author for author in authors if author]  # Remove empty strings
+                
+                paper = {
+                    'journal': entry.prism_publicationname if hasattr(entry, 'prism_publicationname') else '',
+                    'id': paper_id,
+                    'pdf': "",
+                    'abs': f"https://doi.org/{entry.prism_doi}",      # if RSS has no abstract use doi link
+                    'title': entry.title,
+                    'summary': '',
+                    'authors': authors,
+                    'published': publish_date,
+                    'category': '',
+                }
+                papers.append(paper)
+        
+        logger.info(f"Successfully fetched {len(papers)} unique papers from {self.source}")
+        return papers
+
+    def _fetch_optica(self) -> List[Dict]:
+        """
+        Fetch papers from Optica RSS feed.
+        
+        Returns:
+            List of paper dictionaries with Optica-specific fields
+        """
+        papers = []
+        seen_ids = set()
+
+        categories = self.categories.split('+')
+        
+        for category in categories:
+            rss_url = f"{self.base_url}{category}_feed.xml"
+            logger.info(f"Fetching {self.source} RSS feed from: {rss_url}")
+            
+            try:
+                response = requests.get(rss_url, timeout=30)
+                response.raise_for_status()
+                logger.debug(f"RSS feed fetched successfully, status code: {response.status_code}")
+            except requests.RequestException as e:
+                logger.error(f"Failed to fetch RSS feed: {e}")
+                raise
+            
+            feed = feedparser.parse(response.content)
+            
+            for entry in feed.entries:
+                # Extract paper ID (format depends on source)
+                # paper_id = entry.prism_doi  # Adjust based on source
+                paper_id = entry.dc_identifier.split('doi:')[-1]  # Adjust based on source
+                
+                if paper_id in seen_ids:
+                    continue
+                
+                seen_ids.add(paper_id)
+                logger.debug(f"Processing paper: {paper_id}")
+
+                publish_date = entry.published if hasattr(entry, 'published') else ''
+                publish_date = publish_date.split(' ') if publish_date else ''
+                publish_date = datetime.strptime(publish_date[1]+' '+publish_date[2]+' '+publish_date[3], "%d %b %Y").strftime("%Y-%m-%d")
+                
+                authors_p = [author.name for author in entry.authors] if hasattr(entry, 'authors') else []
+                authors = sum([author.split(', ') for author in authors_p], []) if authors_p else []
+                authors = [author for author in authors if author]  # Remove empty strings
+
+                journal = entry.dc_source if hasattr(entry, 'dc_source') else ''
+                journal = journal.split(',')[0] if journal else ''
+                
+                paper = {
+                    'journal': journal,
+                    'id': paper_id,
+                    'pdf': "",
+                    'abs': f"https://doi.org/{paper_id}",      # if RSS has no abstract use doi link
+                    'title': entry.title,
+                    'summary': '',
+                    'authors': authors,
+                    'published': publish_date,
+                    'category': '',
+                }
+                papers.append(paper)
+        
+        logger.info(f"Successfully fetched {len(papers)} unique papers from {self.source}")
+        return papers
+
+    def _fetch_aps(self) -> List[Dict]:
+        """
+        Fetch papers from APS RSS feed.
+        
+        Returns:
+            List of paper dictionaries with APS-specific fields
+        """
+        papers = []
+        seen_ids = set()
+
+        categories = self.categories.split('+')
+        
+        for category in categories:
+            rss_url = f"{self.base_url}{category}.xml"
+            logger.info(f"Fetching {self.source} RSS feed from: {rss_url}")
+            
+            try:
+                response = requests.get(rss_url, timeout=30)
+                response.raise_for_status()
+                logger.debug(f"RSS feed fetched successfully, status code: {response.status_code}")
+            except requests.RequestException as e:
+                logger.error(f"Failed to fetch RSS feed: {e}")
+                raise
+            
+            feed = feedparser.parse(response.content)
+            
+            for entry in feed.entries:
+                # Extract paper ID (format depends on source)
+                # paper_id = entry.prism_doi  # Adjust based on source
+                paper_id = entry.prism_doi  # Adjust based on source
+                
+                if paper_id in seen_ids:
+                    continue
+                
+                seen_ids.add(paper_id)
+                logger.debug(f"Processing paper: {paper_id}")
+
+                publish_date = entry.prism_publicationdate if hasattr(entry, 'prism_publicationdate') else ''
+                publish_date = datetime.strptime(publish_date.split('+')[0], '%Y-%m-%dT%H:%M:%S').strftime("%Y-%m-%d")
+                
+                ################################## 'and' bug here
+                authors_p = [author.name for author in entry.authors] if hasattr(entry, 'authors') else []
+                authors = sum([author.split(', ') for author in authors_p], []) if authors_p else []
+                authors = [author for author in authors if author]  # Remove empty strings
+
+                subject = entry.prism_section if hasattr(entry, 'prism_section') else ''
+                subjects = subject.split(', ') if subject else ''
+                categories = []
+                for category in subjects:
+                    if 'and ' not in category:
+                        categories.append(category.strip())
+                    else:
+                        categories.append(subject[5:].strip())
+                categories = [category for category in categories if category]  # Remove empty strings
+                ################################## 'and' bug here
+                
+                paper = {
+                    'journal': entry.prism_publicationname if hasattr(entry, 'prism_publicationname') else '',
+                    'id': paper_id,
+                    'pdf': "",
+                    'abs': f"https://doi.org/{entry.prism_doi}",      # if RSS has no abstract use doi link
+                    'title': entry.title,
+                    'summary': '',
+                    'authors': authors,
+                    'published': publish_date,
+                    'category': categories,
+                }
+                papers.append(paper)
+        
+        logger.info(f"Successfully fetched {len(papers)} unique papers from {self.source}")
         return papers
     
     def save_to_jsonl(self, papers: List[Dict], output_file: str, append: bool = False):
@@ -468,7 +686,7 @@ def process_source(source: str, categories: str, output_base: str, output_dir: s
             logger.debug(f"[{source}] DOIs to fetch: {dois_to_fetch}")
         
             if len(dois_to_fetch) == len(new_papers):
-                new_papers =  get_abstract(source, dois_to_fetch)
+                # new_papers =  get_abstract(source, dois_to_fetch)
                 result['new_papers_with_abs'] = len([p for p in new_papers if p['summary'] != ''])
                 logger.info(f"[{source}] Successfully fetched abstracts for {result['new_papers_with_abs']} out of {len(dois_to_fetch)} papers")
             else:
