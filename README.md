@@ -1,296 +1,347 @@
 # Daily Paper RSS AI Enhance
 
-A **locally-run** academic paper recommendation system that fetches papers via RSS feeds (arXiv, Nature, etc.), uses AI to generate structured summaries and intelligently ranks papers based on Zotero library similarity through embedding-based matching—all processed locally with personalized collection filtering.
+**基于 RSS 订阅的智能学术论文推荐系统**
 
-**本地化的学术论文推荐系统，支持RSS订阅（arXiv、Nature等），通过AI生成结构化摘要并基于Zotero文献库进行智能排序，所有数据在本地处理。**
+> 📚 通过 AI 增强和 Zotero 文献库智能排序,自动发现与你研究兴趣相关的最新学术论文
 
-## Code is under testing and will be open-source soon.
-**本人第一次在github上上传代码，不知道是否有不合适的地方，如果有感谢指出**
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![uv](https://img.shields.io/badge/uv-package%20manager-orange.svg)](https://github.com/astral-sh/uv)
 
-## ✨ Key Features
+---
 
-🎯 **Local Processing (When using local ai provider like Ollama)**
-- All data fetched and processed locally on your machine
-- No cloud dependencies - full control over your data
-- JSONL-based storage for transparency and portability
+## 💡 项目简介
 
-🤖 **AI-Powered Enhancement**
-- Structured summarization using OpenAI-compatible LLMs
-- Generates: TL;DR, motivation, method, results, and conclusion
-- Cost-effective: With the help of zotero recommendation, only generate AI content for papers that are relevant to your existing Zotero library
-- Configurable models (default: qwen3-30b-a3b-instruct-2507, deepseek-chat, etc.)
+这是一个**本地化运行**的学术论文推荐系统,集成了 RSS 订阅、AI 智能摘要生成和基于 Zotero 文献库的个性化排序功能。系统能够:
 
-📚 **Smart Zotero Integration**
-- Ranks papers by similarity to your existing Zotero library
-- Uses embedding models for semantic matching (default: Qwen3-Embedding-8B)
-- Time-decay weighting for recent additions
-- Automatic collection detection and re-ranking
+- 📡 **自动抓取**多个学术期刊的最新论文(arXiv、Nature 等)
+- 🤖 **AI 增强**:使用大语言模型生成结构化中/英文摘要
+- 🎯 **智能排序**:基于你的 Zotero 文献库,通过嵌入向量相似度计算推荐最相关的论文
+- 💾 **本地处理**:所有数据在本地存储和处理,完全可控,仅当使用本地AI时,如果使用线上供应商时部分数据会上传到供应商服务器处理
+- 🌐 **Web 界面**:提供美观的响应式界面,支持搜索、筛选和收藏功能
 
-📡 **Multi-Source RSS Support**
-- **arXiv**: Physics, Quantum Physics, Condensed Matter, Nonlinear Sciences, AI, CV, etc.
-- **Nature**: Nature, Nature Photonics, Nature Physics, Nature Communications, etc.
-- Extensible architecture for adding more sources
+### ⚠️ 开发状态
 
-🌐 **Clean Web Interface**
-- Search and filter by collections
-- Date range filtering
-- Favorite system
-  
+**项目正在测试中,即将完全开源**  
+这是本人第一次在 GitHub 上传代码,如有不当之处,欢迎指正! 🙏
 
-## 📸 Screenshot
-### Home Page
-![Daily Paper RSS Home Page](assets/home_page.png)
-### Papers Page
-- Dates, journal, your zotero collection filter
-- Clear zotero collection tag on each card
-![Daily Paper RSS Papers Page](assets/papers_page.png)
-![Daily Paper RSS Papers Page](assets/paper_page2.png)
-### Paper Details Page
-![Daily Paper RSS Paper Details Page](assets/paper_details.png)
-### Favorites Page
-![Daily Paper RSS Favorites Page](assets/favorites_system.png)
+---
 
+## ✨ 核心功能
 
-## 🚀 Quick Start
+### 🎯 本地化处理 (支持本地 AI 提供商如 Ollama)
+- ✅ 所有数据在本地机器上抓取和处理
+- ✅ 无云服务依赖 - 完全掌控你的数据
+- ✅ 基于 JSONL 格式存储,透明且易于迁移
 
-### Prerequisites
+### 🤖 AI 智能增强
+- ✅ 使用兼容 OpenAI 的大语言模型进行结构化摘要
+- ✅ 生成内容:核心要点(TL;DR)、研究动机、研究方法、研究结果、结论
+- ✅ **高性价比**:借助 Zotero 推荐,仅对相关论文生成 AI 内容
+- ✅ 可配置模型(默认: qwen3-30b-a3b-instruct-2507、deepseek-chat 等)
+- ✅ 支持中英文输出,可在设置页面切换
 
-- Python 3.10+
-- [uv](https://github.com/astral-sh/uv) package manager
-- OpenAI-compatible API access
-- Zotero account with API key
+### 📚 智能 Zotero 集成
+- ✅ 基于你现有 Zotero 文献库的相似度排序论文
+- ✅ 使用嵌入向量模型进行语义匹配(默认: Qwen3-Embedding-8B)
+- ✅ 对最近添加的文献进行时间衰减加权
+- ✅ 自动检测文献夹并重新排序
 
-### Installation
+### 📡 多源 RSS 订阅支持
+- ✅ **arXiv**: 物理学、量子物理、凝聚态物理、非线性科学、AI、CV 等
+- ✅ **Nature 系列**: Nature、Nature Photonics、Nature Physics、Nature Communications 等
+- ✅ 可扩展架构,支持添加更多来源
 
-1. **Clone the repository**
+### 🌐 精美 Web 界面
+- ✅ 按文献夹搜索和筛选
+- ✅ 日期范围筛选
+- ✅ 收藏夹系统
+- ✅ 响应式设计,支持桌面和移动端
+
+---
+
+## 📸 界面截图
+
+### 🏠 主页
+显示最近的更新信息和系统状态
+
+![主页](assets/home_page.png)
+
+### 📚 论文页面
+- 支持按日期、期刊、Zotero 文献夹筛选
+- 每个论文卡片显示清晰的 Zotero 文献夹标签
+
+![论文页面 1](assets/papers_page.png)
+
+![论文页面 2](assets/paper_page2.png)
+
+### 📑 论文详情页
+显示完整的 AI 生成摘要,包括研究动机、方法、结果和结论
+
+![论文详情](assets/paper_details.png)
+
+### ⭐ 收藏夹系统
+按文件夹组织你收藏的论文,方便管理
+
+![收藏夹系统](assets/favorites_system.png)
+
+---
+
+## 🚀 快速开始
+
+### 💻 环境要求
+
+- **Python 3.12+**
+- **[uv](https://github.com/astral-sh/uv)** 包管理器
+- **OpenAI 兼容 API** 访问权限(或本地 LLM 如 Ollama)
+- **Zotero** 账户及 API 密钥
+
+### 📥 安装步骤
+
+#### 1. 克隆仓库
+
 ```bash
 git clone https://github.com/yourusername/Daily_Paper_RSS_AI_Enhance.git
 cd Daily_Paper_RSS_AI_Enhance
 ```
 
-2. **Install dependencies**
+#### 2. 安装依赖
+
 ```bash
 uv sync
 ```
 
-3. **Set up environment variables**
+> **注意**: 首次安装可能需要下载 PyTorch 等大型包,请耐心等待。
 
-Create a `.env` file in the project root:
+#### 3. 配置环境变量
+
+在项目根目录创建 `.env` 文件:
 
 ```bash
-# New-API (required, alternatively any openai-compatible provider)
+# New-API (必选,或任何 OpenAI 兼容的提供商)
 NEWAPI_KEY_AD=your_newapi_key
 NEWAPI_BASE_URL=https://127.0.0.1:yourport/v1
 
-# Zotero API (required)
+# Zotero API (必选)
 ZOTERO_KEY_AD=your_zotero_api_key
 ZOTERO_ID=your_zotero_user_id
 
-# Nature API (optional, only if fetching Nature papers)
+# Nature API (可选,仅当抓取 Nature 论文时需要)
 NATURE_API_KEY=your_nature_api_key
 ```
 
-**Getting your keys:**
-- **New-API Key and Base URL**: Generate at [https://github.com/QuantumNous/new-api](https://github.com/QuantumNous/new-api). New-API is an open-source AI gateway that provides access to multiple AI providers (*Online*: OpenAI, Gemini, DeepSeek, Qwen, SiliconFlow; *Local*: Ollama, LMstudio, etc.)
-- **Zotero User ID**: Get it from [https://www.zotero.org/settings/keys](https://www.zotero.org/settings/keys)
-- **Zotero API Key**: Generate at [https://www.zotero.org/settings/keys/new](https://www.zotero.org/settings/keys/new) (needs read access)
-- **Nature API Key**: Apply at [Springer Nature API Portal](https://dev.springernature.com/)
+**获取密钥指引:**
 
-1. **Configure RSS sources (optional)**
+- **New-API 密钥和基础 URL**: 访问 [https://github.com/QuantumNous/new-api](https://github.com/QuantumNous/new-api) 生成。New-API 是一个开源 AI 网关,提供对多个 AI 提供商的访问(*在线*: OpenAI, Gemini, DeepSeek, Qwen, SiliconFlow; *本地*: Ollama, LMstudio 等)
+- **Zotero 用户 ID**: 从 [https://www.zotero.org/settings/keys](https://www.zotero.org/settings/keys) 获取
+- **Zotero API 密钥**: 在 [https://www.zotero.org/settings/keys/new](https://www.zotero.org/settings/keys/new) 生成(需要读取权限)
+- **Nature API 密钥**: 在 [Springer Nature API Portal](https://dev.springernature.com/) 申请
 
-Run `main.py` to customize:
-- RSS sources and categories
-- LLM model name
-- Embedding model
-- Output language
-- Maximum workers
+#### 4. 自定义配置(可选)
 
-### Usage
+运行 `main.py` 时可以自定义以下参数:
 
-#### Daily Run （Use Windows Schedule）
+```bash
+--sources           # RSS 来源和分类
+--model_name        # 生成 AI 内容的模型名称
+--embedding_model   # 生成嵌入向量的模型名称
+--language          # 输出语言 (Chinese 或 English)
+--max_workers       # 并行工作线程数
+```
+
+---
+
+## 🎮 使用方法
+
+### 📅 每日运行 (使用 Windows 任务计划程序)
 
 ```bash
 uv run main.py
-#args
---sources # The RSS sources and categories to fetch (e.g., arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms)
---model_name # The model name to generate ai content (e.g., qwen3-30b-a3b-instruct-2507)
---embedding_model # The model name to generate embeddings (e.g., qwen3-embedding-8b)
---language "en" # The language to generate content in (e.g., English, Chinese)
---max_workers "4" # the maximum number of workers to use for generating ai content
 ```
 
-This will:
-1. Fetch latest papers from configured RSS sources
-2. Rank papers using Zotero library embeddings
-3. Generate AI summaries for relevant papers
-<!-- 4. Update the web interface -->
-
-#### Weekly Collection Check（Use Windows Schedule）
+**可选参数:**
 
 ```bash
-uv run main_week_check.py
---model_name # The model name to generate ai content (e.g., qwen3-30b-a3b-instruct-2507t)
---embedding_model # The model name to generate embeddings (e.g., qwen3-embedding-8b)
---language "en" # The language to generate content in (e.g., English, Chinese)
---max_workers "4" # the maximum number of workers to use for generating ai content
+--sources "arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms"
+  # RSS 来源和分类 (例如: arxiv:physics+quant-ph,nature:nature+nphoton)
+
+--model_name "qwen3-30b-a3b-instruct-2507"
+  # 生成 AI 内容的模型名称
+
+--embedding_model "qwen3-embedding-8b"
+  # 生成嵌入向量的模型名称
+
+--language "Chinese"
+  # 输出语言 (Chinese 或 English)
+
+--max_workers 4
+  # 并行工作线程数,增加可加快 AI 处理速度
+
+--output "2025-11-03"
+  # 输出文件基础名称 (默认为当前日期)
+
+--output-dir "data"
+  # 输出文件目录 (默认: data)
 ```
 
-Checks for new Zotero collections and re-ranks all existing papers.
+**执行流程:**
 
-<!-- #### View Results
+1. 从配置的 RSS 源抓取最新论文
+2. 使用 Zotero 文献库嵌入向量对论文排序
+3. 为相关论文生成 AI 摘要
+4. 更新文件列表供 Web 界面使用
 
-Start a local web server:
+### 📊 每周集合检查 (使用 Windows 任务计划程序)
+
+当你在 Zotero 中新建了文献夹时,运行此命令重新排序所有现有论文:
+
+```bash
+uv run main.py  # 内置每周检查功能
+```
+
+**注意**: `main.py` 已集成每周检查功能,会在每周日 10:00 自动执行。
+
+### 🌐 查看结果
+
+#### 方式 1: 直接打开 HTML 文件
+
+双击 `index.html` 文件即可在浏览器中打开。
+
+#### 方式 2: 启动本地服务器
+
 ```bash
 python -m http.server 8000
 ```
 
-Then visit `http://localhost:8000` in your browser.
+然后在浏览器中访问 `http://localhost:8000`
 
-Or simply open `index.html` directly in your browser. -->
+---
 
-## 📁 Project Structure
+## 📁 项目结构
 
 ```
 Daily_Paper_RSS_AI_Enhance/
-├── ai/                          # AI enhancement and ranking modules
-summarization
-│   ├── enhance.py               # LLM-based paper 
-│   ├── structure.py             # Data structures for AI
-│   ├── system.txt               # System prompt template
-│   ├── template.txt             # User prompt template
-ranking
-│   └── zotero_recommender.py    # Embedding-based Zotero output
-
-├── fetcher/                     # RSS fetching modules
-│   └── rss_fetcher.py           # Generic multi-source RSS fetcher
-├── data/                        # Paper data storage (JSONL)
-│   └── cache/                   # RSS cache and update logs
-├── assets/                      # Web assets
-│   └── file-list.txt            # List of data files for UI
-├── css/                         # Stylesheets (auto-generated)
-├── js/                          # JavaScript for web UI (auto-generated)
-├── index.html                   # Main web interface
-├── main.py                      # Main entry point
-├── main_week_check.py           # Weekly collection checker
-├── logger_config.py             # Logging configurationscript
-├── pyproject.toml               # Project dependencies
-└── README.md                    # This file
+├── ai/                          # AI 增强和排序模块
+│   ├── enhance.py               # 基于 LLM 的论文摘要生成
+│   ├── structure.py             # AI 输出的数据结构
+│   ├── system.txt               # 系统提示词模板
+│   ├── template.txt             # 用户提示词模板
+│   └── zotero_recommender.py    # 基于嵌入向量的 Zotero 排序
+├── fetcher/                     # RSS 抓取模块
+│   └── rss_fetcher.py           # 通用多源 RSS 抓取器
+├── data/                        # 论文数据存储 (JSONL 格式)
+│   └── cache/                   # RSS 缓存和更新日志
+├── assets/                      # Web 资源
+│   ├── file-list.txt            # 数据文件列表供 UI 使用
+│   └── *.png                    # 期刊 Logo 和截图
+├── css/                         # 样式表
+│   └── style.css                # 主样式文件
+├── js/                          # JavaScript 脚本
+│   └── app.js                   # 主应用逻辑
+├── index.html                   # 主 Web 界面
+├── main.py                      # 主程序入口点
+├── logger_config.py             # 日志配置
+├── pyproject.toml               # 项目依赖
+├── uv.lock                      # 依赖锁文件
+├── .gitignore                   # Git 忽略规则
+├── LICENSE                      # AGPL-3.0 许可证
+└── README.md                    # 本文件
 ```
 
-## 🔧 Configuration
+---
 
-### RSS Sources
+## 🔧 配置详解
 
-Modify the `--sources` parameter in `run.bat`:
+### 📡 RSS 来源配置
+
+修改 `main.py` 中的 `--sources` 参数:
 
 ```bash
 --sources "arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms"
 ```
 
-Format: `source:category1+category2+category3,source2:category1+category2`
+**格式**: `来源:分类1+分类2+分类3,来源2:分类1+分类2`
 
-**Available arXiv categories:**
-- `physics` - Physics
-- `quant-ph` - Quantum Physics
-- `cond-mat` - Condensed Matter
-- `nlin` - Nonlinear Sciences
-- `cs.AI` - Artificial Intelligence
-- `cs.CV` - Computer Vision
-- `cs.CL` - Computation and Language
-- See full list at [arXiv Categories](https://arxiv.org/category_taxonomy)
+#### 可用的 arXiv 分类:
 
-**Available Nature journals:**
-- `nature` - Nature
-- `nphoton` - Nature Photonics
-- `nphys` - Nature Physics
-- `ncomms` - Nature Communications
-- `natrevphys` - Nature Reviews Physics
-- `lsa` - Light: Science & Applications
-- `natmachintell` - Nature Machine Intelligence
-- See full list at [Nature Portfolio](https://www.nature.com/siteindex)
+| 分类代码 | 说明 |
+|---------|------|
+| `physics` | 物理学 |
+| `quant-ph` | 量子物理 |
+| `cond-mat` | 凝聚态物理 |
+| `nlin` | 非线性科学 |
+| `cs.AI` | 人工智能 |
+| `cs.CV` | 计算机视觉 |
+| `cs.CL` | 计算与语言 |
+| `cs.LG` | 机器学习 |
 
-### LLM Models
+完整列表见: [arXiv 分类目录](https://arxiv.org/category_taxonomy)
 
-Modify `--model_name` in `run.bat`:
+#### 可用的 Nature 期刊:
+
+| 期刊代码 | 期刊名称 |
+|---------|---------|
+| `nature` | Nature |
+| `nphoton` | Nature Photonics |
+| `nphys` | Nature Physics |
+| `ncomms` | Nature Communications |
+| `natrevphys` | Nature Reviews Physics |
+| `lsa` | Light: Science & Applications |
+| `natmachintell` | Nature Machine Intelligence |
+
+完整列表见: [Nature Portfolio](https://www.nature.com/siteindex)
+
+### 🤖 LLM 模型配置
+
+修改 `--model_name` 参数:
 
 ```bash
 --model_name "qwen3-30b-a3b-instruct-2507"
-# or
---model_name "gpt-oss-20b"
-# or any OpenAI-compatible model
+# 或
+--model_name "deepseek-chat"
+# 或
+--model_name "gpt-4o"
+# 或任何 OpenAI 兼容的模型
 ```
 
-### Embedding Models
+### 🔢 嵌入向量模型配置
 
-Modify `--embedding_model` in `run.bat`:
+修改 `--embedding_model` 参数:
 
 ```bash
---embedding_model "text-embedding-3-small"
-# or
 --embedding_model "qwen3-embedding-8b"
+# 或
+--embedding_model "text-embedding-3-small"
+# 或任何 OpenAI 兼容的嵌入模型
 ```
 
-### Output Language
+### 🌍 输出语言配置
 
-Modify `--language` in `run.bat`:
+修改 `--language` 参数:
 
 ```bash
 --language "Chinese"
-# or
+# 或
 --language "English"
 ```
 
-## 🧪 Advanced Usage
+你也可以在 Web 界面的设置页面中切换语言,系统会自动加载对应语言的数据文件。
 
-### Python API
+### ⚙️ 并行处理配置
 
-You can also use the modules programmatically:
-
-```python
-from fetcher.rss_fetcher import rss_fetcher_main
-from ai.zotero_recommender import zotero_recommender_main
-from ai.enhance import enhance_main
-
-# Fetch papers
-rss_fetcher_main(
-    output='2025-11-03',
-    output_dir='data',
-    sources='arxiv:cs.AI+cs.CV'
-)
-
-# Rank papers
-zotero_recommender_main(
-    data='2025-11-03',
-    data_dir='data',
-    embedding_model='text-embedding-3-small'
-)
-
-# Enhance with AI
-enhance_main(
-    data='2025-11-03',
-    data_dir='data',
-    model_name='gpt-4o',
-    language='English',
-    max_workers=5
-)
-```
-
-### Custom Workflow
+修改 `--max_workers` 参数来控制 AI 处理的并行度:
 
 ```bash
-# Fetch only
-uv run python -c "from fetcher.rss_fetcher import rss_fetcher_main; rss_fetcher_main()"
-
-# Rank only
-uv run python -c "from ai.zotero_recommender import zotero_recommender_main; zotero_recommender_main()"
-
-# Enhance only
-uv run python -c "from ai.enhance import enhance_main; enhance_main()"
+--max_workers 4  # 使用 4 个并行线程
 ```
 
-## 📊 Data Format
+**注意**: 增加并行线程数可以加快处理速度,但也会增加 API 调用频率和成本。
 
-Papers are stored in JSONL format with the following structure:
+---
+
+## 📊 数据格式说明
+
+论文数据以 JSONL 格式存储,每行一个 JSON 对象,结构如下:
 
 ```json
 {
@@ -298,204 +349,201 @@ Papers are stored in JSONL format with the following structure:
   "id": "10.1038/s41566-024-01234-5",
   "pdf": "https://www.nature.com/articles/s41566-024-01234-5.pdf",
   "abs": "https://doi.org/10.1038/s41566-024-01234-5",
-  "title": "Paper Title",
-  "summary": "Abstract text...",
-  "authors": ["Author1", "Author2"],
+  "title": "论文标题",
+  "summary": "论文摘要文本...",
+  "authors": ["作者1", "作者2"],
   "published": "2025-11-03",
-  "category": "Quantum optics",
+  "category": "量子光学",
   "score": {
-    "Collection1": 8.5,
-    "Collection2": 6.2,
+    "文献夹1": 8.5,
+    "文献夹2": 6.2,
     "max": 8.5
   },
-  "collection": ["Collection1"],
+  "collection": ["文献夹1"],
   "AI": {
-    "tldr": "One-sentence summary",
-    "motivation": "Why this research...",
-    "method": "How they did it...",
-    "result": "What they found...",
-    "conclusion": "Final thoughts..."
+    "tldr": "一句话总结",
+    "motivation": "研究动机...",
+    "method": "研究方法...",
+    "result": "研究结果...",
+    "conclusion": "结论..."
   }
 }
 ```
 
+### 字段说明:
 
-## 📋 TODO
+- **journal**: 期刊名称
+- **id**: 论文唯一标识符 (arXiv ID 或 DOI)
+- **pdf**: PDF 下载链接
+- **abs**: 摘要页面链接
+- **title**: 论文标题
+- **summary**: 论文原始摘要
+- **authors**: 作者列表
+- **published**: 发表日期
+- **category**: 分类/主题
+- **score**: 与各 Zotero 文献夹的相关性评分
+- **collection**: 推荐的 Zotero 文献夹列表
+- **AI**: AI 生成的结构化摘要
 
-- [ ] Add more RSS sources (Science, PNAS, Physical Review Letters, etc.)
-- [ ] Add data analysis and visualization page
+---
 
-## 🐛 Known Issues
+## 🎯 高级用法
 
-- 
+### Python API 调用
 
-## 📝 License
+你可以通过 Python 脚本直接调用各个模块:
 
-This project is distributed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [LICENSE](LICENSE) for details.
+```python
+from fetcher.rss_fetcher import rss_fetcher_main
+from ai.zotero_recommender import zotero_recommender_main
+from ai.enhance import enhance_main
 
-### Why AGPL-3.0?
+# 1. 抓取论文
+rss_fetcher_main(
+    output='2025-11-03',
+    output_dir='data',
+    sources='arxiv:cs.AI+cs.CV,nature:nature+nphoton'
+)
 
-This license ensures:
-- ✅ Freedom to use, modify, and distribute
-- ✅ Requirement to share modifications (even for network services)
-- ✅ Protection against proprietary forks
-- ✅ Compatibility with upstream dependencies
+# 2. 基于 Zotero 排序
+zotero_recommender_main(
+    data='2025-11-03',
+    data_dir='data',
+    embedding_model='qwen3-embedding-8b'
+)
 
-## 🙏 Acknowledgements
+# 3. 生成 AI 摘要
+enhance_main(
+    data='2025-11-03',
+    data_dir='data',
+    model_name='qwen3-30b-a3b-instruct-2507',
+    language='Chinese',
+    max_workers=4
+)
+```
 
-This project builds upon and integrates code from the following excellent open-source projects:
+### 单独运行各模块
 
-### Primary Sources
+```bash
+# 仅抓取论文
+uv run python -c "from fetcher.rss_fetcher import rss_fetcher_main; rss_fetcher_main()"
+
+# 仅排序论文
+uv run python -c "from ai.zotero_recommender import zotero_recommender_main; zotero_recommender_main()"
+
+# 仅生成 AI 摘要
+uv run python -c "from ai.enhance import enhance_main; enhance_main()"
+```
+
+### 定时任务设置 (Windows)
+
+`main.py` 已内置定时任务功能:
+
+```python
+# 每天 08:00 执行主任务
+schedule.every().day.at("08:00").do(main, args=args)
+
+# 每周日 10:00 执行周检查
+schedule.every().sunday.at("10:00").do(main_week_check, args=args)
+```
+
+你可以:
+
+1. **直接运行**: `uv run main.py` (会持续运行并在指定时间执行任务)
+2. **使用 Windows 任务计划程序**: 创建定时任务执行 `uv run main.py --sources ... --language ...`
+
+---
+
+## 📋 待办事项 (TODO)
+
+- [ ] 添加更多 RSS 源 (Science、PNAS、Physical Review Letters 等)
+- [ ] 添加数据分析和可视化页面
+- [ ] 支持导出为 BibTeX 格式
+- [ ] 添加论文引用关系图谱
+- [ ] 支持 Docker 部署
+- [ ] 添加自动化测试
+- [ ] 支持本地 LLM 推理 (完全离线运行)
+- [ ] PDF 下载和本地存储功能
+
+---
+
+## 🐛 已知问题
+
+- Nature API 有速率限制 (每次请求 25 篇论文)
+- 某些 arXiv 分类在周末可能返回空结果
+- AI 增强处理大量论文时可能较慢 (可通过 `--max_workers` 并行化加速)
+- 首次运行时 PyTorch 等大型依赖下载时间较长
+
+---
+
+## 📝 开源许可
+
+本项目采用 **GNU Affero General Public License v3.0 (AGPL-3.0)** 许可证发布。详见 [LICENSE](LICENSE) 文件。
+
+### 为什么选择 AGPL-3.0?
+
+AGPL-3.0 确保:
+- ✅ 自由使用、修改和分发的权利
+- ✅ 要求分享修改内容 (即使通过网络服务提供)
+- ✅ 防止闭源分支
+- ✅ 与上游依赖项兼容
+
+---
+
+## 🙏 致谢
+
+本项目构建并集成了以下优秀开源项目的代码:
+
+### 主要来源
 
 1. **[daily-arXiv-ai-enhanced](https://github.com/dw-dengwei/daily-arXiv-ai-enhanced)** by [@dw-dengwei](https://github.com/dw-dengwei)
-   - Inspired the RSS fetching and AI summarization workflow
-   - Provided foundation for the web interface design
-   - Reference implementation for LLM integration
+   - 启发了 RSS 抓取和 AI 摘要生成工作流
+   - 提供了 Web 界面设计基础
+   - LLM 集成的参考实现
 
 2. **[zotero-arxiv-daily](https://github.com/TideDra/zotero-arxiv-daily)** by [@TideDra](https://github.com/TideDra)
-   - Licensed under AGPL-3.0
-   - Core algorithm for Zotero-based paper ranking
-   - Embedding similarity calculation and time-decay weighting
-   - Foundation for the recommendation system
+   - 采用 AGPL-3.0 许可证
+   - 基于 Zotero 的论文排序核心算法
+   - 嵌入向量相似度计算和时间衰减加权
+   - 推荐系统的基础架构
 
-### Dependencies
+### 核心依赖
 
-- [pyzotero](https://github.com/urschrei/pyzotero) - Zotero API client
-- [feedparser](https://github.com/kurtmckee/feedparser) - RSS/Atom feed parser
-- [langchain](https://github.com/langchain-ai/langchain) - LLM framework
-- [OpenAI Python SDK](https://github.com/openai/openai-python) - API client
-- [requests](https://github.com/psf/requests) - HTTP library
-- [numpy](https://github.com/numpy/numpy) - Numerical computing
+- [pyzotero](https://github.com/urschrei/pyzotero) - Zotero API 客户端
+- [feedparser](https://github.com/kurtmckee/feedparser) - RSS/Atom 订阅解析器
+- [langchain](https://github.com/langchain-ai/langchain) - LLM 框架
+- [OpenAI Python SDK](https://github.com/openai/openai-python) - API 客户端
+- [requests](https://github.com/psf/requests) - HTTP 库
+- [numpy](https://github.com/numpy/numpy) - 数值计算库
 
-### AI Gateway
+### AI 网关
 
-- [new-api](https://github.com/QuantumNous/new-api) - Open-source AI gateway
+- [new-api](https://github.com/QuantumNous/new-api) - 开源 AI 网关
 
-### AI Coding
+### AI 编码助手
 
-- [qoder](https://qoder.com/) - This project is finished with the assistance of qoder and qoder cli.
+- [Qoder](https://qoder.com/) - 本项目借助 Qoder 和 Qoder CLI 的辅助完成
 
-### Special Thanks
+### 特别鸣谢
 
-- The arXiv team for providing open access to scientific papers
-- Zotero for their excellent reference management platform
-- The open-source AI community for making powerful models accessible
-
-## ⚠️ Disclaimer
-
-### General Disclaimer
-
-This software is provided "as is", without warranty of any kind, express or implied. The developers and contributors of this project make no representations or warranties regarding the accuracy, completeness, reliability, or suitability of the software for any particular purpose.
-
-### AI-Generated Content
-
-**Important Notice Regarding AI Usage:**
-
-1. **Content Accuracy**: The AI-generated summaries (TL;DR, motivation, method, results, conclusion) are produced by Large Language Models (LLMs) and may contain errors, inaccuracies, or misinterpretations of the original research papers. Users should:
-   - Always verify AI-generated content against the original paper
-   - Not rely solely on AI summaries for critical research decisions
-   - Use AI summaries only as preliminary screening tools
-
-2. **Academic Integrity**: Users are responsible for:
-   - Properly citing original research papers, not AI-generated summaries
-   - Ensuring compliance with their institution's policies on AI usage
-   - Verifying all information before using it in academic work or publications
-
-3. **API Costs**: Users are responsible for:
-   - All costs incurred from using third-party AI services (OpenAI, DeepSeek, etc.)
-   - Monitoring and managing their API usage and billing
-   - Ensuring compliance with their API provider's terms of service
-
-### Data Privacy and Security
-
-1. **API Data Transmission**: When using cloud-based AI providers, paper abstracts and metadata are transmitted to third-party services. Users should:
-   - Review their AI provider's privacy policy and data handling practices
-   - Be aware that sensitive or unpublished research data may be exposed
-   - Consider using local LLM deployments (e.g., Ollama) for sensitive content
-
-2. **Zotero Integration**: This software accesses your Zotero library via API. Ensure:
-   - Your Zotero API key is kept secure and not shared
-   - You comply with any institutional policies regarding cloud-based reference management
-
-### Legal and Copyright Considerations
-
-1. **Copyright Compliance**: Users must:
-   - Respect copyright laws and terms of service of content providers (arXiv, Nature, etc.)
-   - Ensure they have legal access to fetched papers and abstracts
-   - Not use this tool for unauthorized distribution of copyrighted materials
-
-2. **Research Ethics**: Users should:
-   - Follow ethical guidelines for research and publication in their field
-   - Not use this tool to facilitate plagiarism or academic misconduct
-   - Respect publisher policies regarding automated content access
-
-3. **API Terms of Service**: Users must:
-   - Comply with arXiv's API usage policies and rate limits
-   - Respect Nature and other publishers' API terms of service
-   - Obtain necessary API keys legally and use them responsibly
-
-### Jurisdiction-Specific Notices
-
-**Important**: If your jurisdiction has specific regulations regarding:
-- Academic data processing and storage
-- AI-generated content usage and disclosure
-- Automated access to research databases
-- Cross-border data transmission
-
-You are solely responsible for ensuring compliance with all applicable laws and regulations.
-
-### Content Review Obligations
-
-**For Redistributors**: Any individual or organization that forks, modifies, or redistributes this software must:
-- Perform appropriate content review and compliance checks for their jurisdiction
-- Remove or modify features that may violate local laws or regulations
-- Assume full legal responsibility for their distribution
-- Maintain this disclaimer and add jurisdiction-specific warnings as needed
-
-### Limitation of Liability
-
-IN NO EVENT SHALL THE AUTHORS, COPYRIGHT HOLDERS, OR CONTRIBUTORS BE LIABLE FOR ANY:
-- Direct, indirect, incidental, special, exemplary, or consequential damages
-- Loss of data, research time, or academic opportunities
-- Costs of API usage or third-party services
-- Legal consequences arising from misuse of AI-generated content
-- Violations of academic integrity policies or copyright laws
-
-Arising from the use or inability to use this software, even if advised of the possibility of such damages.
-
-### User Responsibility
-
-By using this software, you acknowledge that:
-- You have read and understood this disclaimer
-- You accept full responsibility for your use of this software and its outputs
-- You will use this tool ethically and in compliance with all applicable laws and policies
-- You understand that AI-generated content requires human verification and should not be blindly trusted
-
-### Recommended Best Practices
-
-To minimize risks:
-1. ✅ Always read the original paper before citing or using research findings
-2. ✅ Use AI summaries only as preliminary screening tools
-3. ✅ Keep API keys secure and monitor usage regularly
-4. ✅ Review your institution's policies on AI usage in research
-5. ✅ Consider using local LLM deployments for sensitive research
-6. ✅ Regularly update the software to benefit from bug fixes and improvements
-7. ✅ Report any issues or bugs to help improve the software
+- arXiv 团队提供的开放获取学术论文服务
+- Zotero 团队提供的优秀参考文献管理平台
+- 开源 AI 社区让强大的模型变得可访问
 
 ---
 
-**Last Updated**: 2025-11-03
+## ⚠️ 免责声明
 
-<!-- ## 📧 Contact
+### 一般性免责声明
 
-For questions, suggestions, or issues, please:
-- Open an [Issue](https://github.com/yourusername/Daily_Paper_RSS_AI_Enhance/issues)
-- Start a [Discussion](https://github.com/yourusername/Daily_Paper_RSS_AI_Enhance/discussions)
+本软件按"原样"提供,不提供任何明示或暗示的保证。本项目的开发者和贡献者不对软件的准确性、完整性、可靠性或适用性作任何陈述或保证。
 
-## ⭐ Star History
-
-If you find this project helpful, please consider giving it a star! ⭐
+### [详情](DISCLAIMER.md)
 
 ---
 
-**Made with ❤️ for researchers who want to stay updated with the latest papers** -->
+**最后更新**: 2025-11-03
+
+---
+
+**如果本项目对你有帮助,欢迎 Star! ⭐**
