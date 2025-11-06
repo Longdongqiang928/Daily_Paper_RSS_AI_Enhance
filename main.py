@@ -59,7 +59,7 @@ def main(args):
     data_dir = args.output_dir
     if os.path.exists(data_dir) and os.path.isdir(data_dir):
         files = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
-        files = list(set([str(f) for f in files if '_AI_enhanced_' not in f.name]))
+        files = list(set([str(f) for f in files if '_AI_enhanced_' not in f]))
         with open('assets/file-list.txt', 'w', encoding='utf-8') as f:
             for file in files:
                 f.write(file + '\n')
@@ -67,23 +67,22 @@ def main(args):
 def main_week_check(args):
     from pathlib import Path
 
-    data_path = Path(args.output_dir)
-    files = list(data_path.glob("*.jsonl"))
-    # Exclude already enhanced files
-    files = list(set([str(f) for f in files if '_AI_enhanced_' not in f.name]))
-    for file in files:
-        output = file[0:9]
-        zotero_recommender_main(output, args.output_dir, args.embedding_model)
-        enhance_main(output, args.output_dir, args.model_name, args.language, args.max_workers)
-
-    # Write list of files in data folder to file-list.txt
     data_dir = args.output_dir
     if os.path.exists(data_dir) and os.path.isdir(data_dir):
         files = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
-        files = list(set([str(f) for f in files if '_AI_enhanced_' not in f.name]))
-        with open('file-list.txt', 'w', encoding='utf-8') as f:
-            for file in files:
-                f.write(file + '\n')
+        files = list(set([str(f)[0:10] for f in files if '_AI_enhanced_' not in f]))
+        for output in files:
+            zotero_recommender_main(output, args.output_dir, args.embedding_model)
+            enhance_main(output, args.output_dir, args.model_name, args.language, args.max_workers)
+
+        # Write list of files in data folder to file-list.txt
+        data_dir = args.output_dir
+        if os.path.exists(data_dir) and os.path.isdir(data_dir):
+            files = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
+            files = list(set([str(f) for f in files if '_AI_enhanced_' not in f]))
+            with open('file-list.txt', 'w', encoding='utf-8') as f:
+                for file in files:
+                    f.write(file + '\n')
 
 
 if __name__ == '__main__':

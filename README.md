@@ -22,7 +22,8 @@
 
 ### ⚠️ 开发状态
 
-**项目正在测试中,即将完全开源**  
+**尝试增加更多RSS源，发现大部分RSS源不包含文章摘要，目前只找到Nature提供官方api，其余需要爬取。尝试使用crawl4ai库进行，但是本人对爬取数据完全小白一个，science和aps网站会被cloudflare拦截，稳定性极差，nature和optica网页能成功爬取，不清楚有什么解决方案**  
+**本项目仅作交流学习用处，请注意遵守所在地法律法规，尤其是数据爬取**  
 这是本人第一次在 GitHub 上传代码,如有不当之处,欢迎指正! 🙏
 
 ---
@@ -153,13 +154,11 @@ NATURE_API_KEY=your_nature_api_key
 
 ## 🎮 使用方法
 
-### 📅 每日运行 (使用 Windows 任务计划程序)
-
 ```bash
 uv run main.py
 ```
 
-**可选参数:**
+### 可选参数:
 
 ```bash
 --sources "arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms"
@@ -184,22 +183,19 @@ uv run main.py
   # 输出文件目录 (默认: data)
 ```
 
-**执行流程:**
+### 执行流程:
+
+ 📅 **每日**
 
 1. 从配置的 RSS 源抓取最新论文
 2. 使用 Zotero 文献库嵌入向量对论文排序
 3. 为相关论文生成 AI 摘要
 4. 更新文件列表供 Web 界面使用
 
-### 📊 每周集合检查 (使用 Windows 任务计划程序)
+📊 **每周集合检查**
 
-当你在 Zotero 中新建了文献夹时,运行此命令重新排序所有现有论文:
-
-```bash
-uv run main.py  # 内置每周检查功能
-```
-
-**注意**: `main.py` 已集成每周检查功能,会在每周日 10:00 自动执行。
+1. 根据最新的Zotero文献夹重拍全部文章
+2. 检查并补充ai生成内容
 
 ### 🌐 查看结果
 
@@ -387,92 +383,16 @@ Daily_Paper_RSS_AI_Enhance/
 
 ---
 
-## 🎯 高级用法
-
-### Python API 调用
-
-你可以通过 Python 脚本直接调用各个模块:
-
-```python
-from fetcher.rss_fetcher import rss_fetcher_main
-from ai.zotero_recommender import zotero_recommender_main
-from ai.enhance import enhance_main
-
-# 1. 抓取论文
-rss_fetcher_main(
-    output='2025-11-03',
-    output_dir='data',
-    sources='arxiv:cs.AI+cs.CV,nature:nature+nphoton'
-)
-
-# 2. 基于 Zotero 排序
-zotero_recommender_main(
-    data='2025-11-03',
-    data_dir='data',
-    embedding_model='qwen3-embedding-8b'
-)
-
-# 3. 生成 AI 摘要
-enhance_main(
-    data='2025-11-03',
-    data_dir='data',
-    model_name='qwen3-30b-a3b-instruct-2507',
-    language='Chinese',
-    max_workers=4
-)
-```
-
-### 单独运行各模块
-
-```bash
-# 仅抓取论文
-uv run python -c "from fetcher.rss_fetcher import rss_fetcher_main; rss_fetcher_main()"
-
-# 仅排序论文
-uv run python -c "from ai.zotero_recommender import zotero_recommender_main; zotero_recommender_main()"
-
-# 仅生成 AI 摘要
-uv run python -c "from ai.enhance import enhance_main; enhance_main()"
-```
-
-### 定时任务设置 (Windows)
-
-`main.py` 已内置定时任务功能:
-
-```python
-# 每天 08:00 执行主任务
-schedule.every().day.at("08:00").do(main, args=args)
-
-# 每周日 10:00 执行周检查
-schedule.every().sunday.at("10:00").do(main_week_check, args=args)
-```
-
-你可以:
-
-1. **直接运行**: `uv run main.py` (会持续运行并在指定时间执行任务)
-2. **使用 Windows 任务计划程序**: 创建定时任务执行 `uv run main.py --sources ... --language ...`
-
----
-
 ## 📋 待办事项 (TODO)
 
-- [ ] 添加更多 RSS 源 (Science、PNAS、Physical Review Letters 等)
+- [ ] **添加更多 RSS 源 (Science、PNAS、Physical Review Letters 等)**
 - [ ] 添加数据分析和可视化页面
-- [ ] 支持导出为 BibTeX 格式
-- [ ] 添加论文引用关系图谱
-- [ ] 支持 Docker 部署
-- [ ] 添加自动化测试
-- [ ] 支持本地 LLM 推理 (完全离线运行)
-- [ ] PDF 下载和本地存储功能
 
 ---
 
 ## 🐛 已知问题
 
-- Nature API 有速率限制 (每次请求 25 篇论文)
-- 某些 arXiv 分类在周末可能返回空结果
-- AI 增强处理大量论文时可能较慢 (可通过 `--max_workers` 并行化加速)
-- 首次运行时 PyTorch 等大型依赖下载时间较长
+- 目前仅支持 Arxiv 和 Springer Nature
 
 ---
 
@@ -515,6 +435,7 @@ AGPL-3.0 确保:
 - [OpenAI Python SDK](https://github.com/openai/openai-python) - API 客户端
 - [requests](https://github.com/psf/requests) - HTTP 库
 - [numpy](https://github.com/numpy/numpy) - 数值计算库
+- [crawl4ai](https://github.com/unclecode/crawl4ai) - 爬虫工具
 
 ### AI 网关
 

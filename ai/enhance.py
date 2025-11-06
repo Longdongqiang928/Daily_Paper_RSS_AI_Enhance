@@ -96,7 +96,7 @@ class AIEnhancer:
         Returns:
             Enhanced paper data with AI summary
         """
-        if item and item["score"]["max"] < 3:
+        if item and item["score"]["max"] < 3.6:
                 logger.debug(f"[{source}] Skipping irrelevant item: {item['id']}")
                 item['AI'] = 'Skip'
                 return item
