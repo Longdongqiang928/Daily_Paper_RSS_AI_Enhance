@@ -24,6 +24,7 @@ dependencies = [
     "langchain>=1.0.3",
     "langchain-deepseek>=1.0.0",
     "schedule>=1.2.2",
+    "crawl4ai>=0.7.6",
 ]
 
 [tool.uv.sources]
