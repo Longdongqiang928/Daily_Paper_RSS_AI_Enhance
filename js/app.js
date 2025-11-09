@@ -102,6 +102,14 @@ async function loadPapers() {
         console.log(`Total papers loaded: ${papers.length}`);
         console.log(`Available dates: ${availableDates.join(', ')}`);
         
+        // Automatically select today's date or the most recent date
+        if (availableDates.length > 0) {
+            const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+            const defaultDate = availableDates.includes(today) ? today : availableDates[0];
+            AppState.selectedDates.add(defaultDate);
+            console.log(`Default date selected: ${defaultDate}`);
+        }
+        
         // Initialize filters
         extractFilterOptions();
         
@@ -526,11 +534,13 @@ function changeYear(year) {
 
 function applyCalendarSelection() {
     closeCalendarModal();
+    displaySearchBar(); // Update date display in the button
     applyFilters();
 }
 
 function clearAllDates() {
     AppState.selectedDates.clear();
+    displaySearchBar(); // Update date display in the button
     applyFilters();
 }
 
@@ -968,7 +978,7 @@ function navigateTo(page) {
             displayDatePicker();
             displayFilters();
             displaySearchBar();
-            displayPapers();
+            applyFilters(); // Apply filters to show default date selection
         } else if (page === 'favorites') {
             displayFavorites();
         } else if (page === 'settings') {
