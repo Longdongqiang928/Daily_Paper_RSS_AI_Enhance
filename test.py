@@ -49,8 +49,7 @@ def parse_args():
     return parser.parse_args()
 
 def main(args):
-    current_time = datetime.now()
-    date = current_time.strftime("%Y-%m-%d")
+    date = "0000-00-00"
     rss_fetcher_main(date, args.output_dir, args.sources)
     zotero_recommender_main(date, args.output_dir, args.embedding_model)
     enhance_main(date, args.output_dir, args.model_name, args.language, args.max_workers)
@@ -88,5 +87,5 @@ def main_week_check(args):
 
 if __name__ == '__main__':
     args = parse_args()
-    # main(args)
-    main_week_check(args)
+    main(args)
+    # main_week_check(args)

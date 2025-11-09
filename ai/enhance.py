@@ -66,7 +66,8 @@ class AIEnhancer:
                 model=self.model_name,
                 api_base=os.environ.get('NEWAPI_BASE_URL'),
                 # base_url=self.base_url,
-                api_key=os.environ.get('NEWAPI_KEY_AD')
+                api_key=os.environ.get('NEWAPI_KEY_AD'),
+                max_tokens=4096
             ).with_structured_output(Structure)
             logger.info(f"Connected to DeepSeek LLM: {self.model_name}")
         else:
