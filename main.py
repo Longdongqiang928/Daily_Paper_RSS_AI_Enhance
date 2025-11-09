@@ -60,7 +60,7 @@ def main(args):
     if os.path.exists(data_dir) and os.path.isdir(data_dir):
         files = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
         files = list(set([str(f) for f in files if '_AI_enhanced_' not in f]))
-        with open('assets/file-list.txt', 'w', encoding='utf-8') as f:
+        with open('data/cache/file-list.txt', 'w', encoding='utf-8') as f:
             for file in files:
                 f.write(file + '\n')
 
@@ -80,7 +80,7 @@ def main_week_check(args):
         if os.path.exists(data_dir) and os.path.isdir(data_dir):
             files = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
             files = list(set([str(f) for f in files if '_AI_enhanced_' not in f]))
-            with open('file-list.txt', 'w', encoding='utf-8') as f:
+            with open('data/cache/file-list.txt', 'w', encoding='utf-8') as f:
                 for file in files:
                     f.write(file + '\n')
 
