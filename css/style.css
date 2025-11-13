@@ -133,6 +133,18 @@ body {
   justify-content: center;
 }
 
+.brand-icon img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 8px;
+  transition: transform 0.3s ease;
+}
+
+.sidebar:hover .brand-icon img {
+  transform: scale(1.05);
+}
+
 .brand-text {
   opacity: 0;
   transform: translateX(-10px);
@@ -150,6 +162,20 @@ body {
   font-size: 0.875rem;
   color: var(--color-text-secondary);
   font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.brand-text img {
+  max-width: 140px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  filter: brightness(1.1);
+  transition: filter 0.3s ease;
+}
+
+.sidebar:hover .brand-text img {
+  filter: brightness(1.2);
 }
 
 .brand-text span {
