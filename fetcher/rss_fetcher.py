@@ -635,89 +635,89 @@ def get_abstract(source, article_dois):
 
     return papers_with_abs
 
-############## Not Finished yet
-# def extract_abstract(source, soup: BeautifulSoup):
-#     logger.debug(f"[{source}] Extracting abstract from {source} page")
-#     abstract_tag = soup.find("h2", string=lambda text: text and "abstract" in text.lower())
-#     if abstract_tag:
-#         # Try to get the next sibling or parent container that holds the abstract text
-#         abstract_content = ""
-#         next_sib = abstract_tag.find_next_sibling()
-#         if next_sib:
-#             abstract_content = next_sib.get_text(strip=True)
-#             logger.debug(f"[{source}] Abstract extracted from next sibling")
-#         else:
-#             # Fallback: look for a parent section and extract text
-#             parent = abstract_tag.find_parent(["section", "div"])
-#             if parent:
-#                 abstract_content = parent.get_text(strip=True)
-#                 logger.debug(f"[{source}] Abstract extracted from parent element")
-#     else:
-#         # Try to extract from <meta name="dc.description" ...>
-#         meta_tag = soup.find("meta", attrs={"name": "dc.description"})
-#         if meta_tag and meta_tag.get("content"):
-#             abstract_content = meta_tag["content"]
-#             logger.debug(f"[{source}] Abstract extracted from meta tag")
-#         else:
-#             abstract_content = ""
-#             logger.debug(f"[{source}] Failed to extract abstract from {source} page")
-#     return abstract_content
+############# Not Finished yet
+def extract_abstract(source, soup: BeautifulSoup):
+    logger.debug(f"[{source}] Extracting abstract from {source} page")
+    abstract_tag = soup.find("h2", string=lambda text: text and "abstract" in text.lower())
+    if abstract_tag:
+        # Try to get the next sibling or parent container that holds the abstract text
+        abstract_content = ""
+        next_sib = abstract_tag.find_next_sibling()
+        if next_sib:
+            abstract_content = next_sib.get_text(strip=True)
+            logger.debug(f"[{source}] Abstract extracted from next sibling")
+        else:
+            # Fallback: look for a parent section and extract text
+            parent = abstract_tag.find_parent(["section", "div"])
+            if parent:
+                abstract_content = parent.get_text(strip=True)
+                logger.debug(f"[{source}] Abstract extracted from parent element")
+    else:
+        # Try to extract from <meta name="dc.description" ...>
+        meta_tag = soup.find("meta", attrs={"name": "dc.description"})
+        if meta_tag and meta_tag.get("content"):
+            abstract_content = meta_tag["content"]
+            logger.debug(f"[{source}] Abstract extracted from meta tag")
+        else:
+            abstract_content = ""
+            logger.debug(f"[{source}] Failed to extract abstract from {source} page")
+    return abstract_content
 
-# async def get_metadata_crawler(source, url: str):
-#     logger.debug(f"[{source}] Starting web crawler for {source}: {url}")
-#     # 1) Reference your persistent data directory
-#     browser_config = BrowserConfig(
-#         headless=False,
-#         verbose=True,
-#         # headless=True,
-#         # verbose=True,
-#         use_managed_browser=True,  # Enables persistent browser strategy
-#         browser_type="chromium",
-#         user_data_dir="data\\my_chrome_profile"
-#     )
-#     run_config = CrawlerRunConfig(
-#         delay_before_return_html=1
-#     )
-#     logger.debug(f"[{source}] Browser config initialized")
+async def get_metadata_crawler(source, url: str):
+    logger.debug(f"[{source}] Starting web crawler for {source}: {url}")
+    # 1) Reference your persistent data directory
+    browser_config = BrowserConfig(
+        headless=False,
+        verbose=True,
+        # headless=True,
+        # verbose=True,
+        use_managed_browser=True,  # Enables persistent browser strategy
+        browser_type="chromium",
+        # user_data_dir="data\\my_chrome_profile"
+    )
+    run_config = CrawlerRunConfig(
+        delay_before_return_html=1
+    )
+    logger.debug(f"[{source}] Browser config initialized")
 
-#     async with AsyncWebCrawler(config=browser_config) as crawler:
-#     # async with AsyncWebCrawler() as crawler:
-#         logger.debug(f"[{source}] Crawling URL: {url}")
-#         result = await crawler.arun(
-#             url=url,
-#             run_config=run_config
-#         )
-#         if result.success:
-#             logger.debug(f"[{source}] Successfully crawled {source} page")
-#             soup = BeautifulSoup(result.html, "html.parser")
-#             abstract_content = extract_abstract(source, soup)
-#             category_tags = soup.find_all("meta", attrs={"name": "dc.subject"})
-#             categories = [tag["content"] for tag in category_tags] if category_tags else []
-#             logger.debug(f"[{source}] Extracted {len(categories)} categories")
-#         else:
-#             logger.error(f"[{source}] Failed to crawl {source} page: {url}")
-#             abstract_content = ""
-#             categories = []
-#     return abstract_content, categories
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+    # async with AsyncWebCrawler() as crawler:
+        logger.debug(f"[{source}] Crawling URL: {url}")
+        result = await crawler.arun(
+            url=url,
+            run_config=run_config
+        )
+        if result.success:
+            logger.debug(f"[{source}] Successfully crawled {source} page")
+            soup = BeautifulSoup(result.html, "html.parser")
+            abstract_content = extract_abstract(source, soup)
+            category_tags = soup.find_all("meta", attrs={"name": "dc.subject"})
+            categories = [tag["content"] for tag in category_tags] if category_tags else []
+            logger.debug(f"[{source}] Extracted {len(categories)} categories")
+        else:
+            logger.error(f"[{source}] Failed to crawl {source} page: {url}")
+            abstract_content = ""
+            categories = []
+    return abstract_content, categories
 
-# def fill_abstracts(source, papers):
-#     logger.info(f"[{source}] Filling abstracts for {len(papers)} papers from {source}")
-#     filled_papers = []
-#     for idx, paper in enumerate(papers, 1):
-#         url = paper["abs"]
-#         logger.debug(f"[{source}] Processing paper {idx}/{len(papers)}: {url}")
-#         abstract_content, categories = asyncio.run(get_metadata_crawler(source, url))
-#         if abstract_content:
-#             paper["summary"] = abstract_content
-#             if categories:
-#                 paper["category"] = categories
-#             filled_papers.append(paper)
-#             logger.debug(f"[{source}] Successfully filled abstract for paper {idx}/{len(papers)}")
-#         else:
-#             logger.warning(f"[{source}] No abstract content found for paper {idx}/{len(papers)}: {url}")
-#     logger.info(f"[{source}] Successfully filled {len(filled_papers)} out of {len(papers)} papers from {source}")
-#     return filled_papers
-############## Not Finished yet
+def fill_abstracts(source, papers):
+    logger.info(f"[{source}] Filling abstracts for {len(papers)} papers from {source}")
+    filled_papers = []
+    for idx, paper in enumerate(papers, 1):
+        url = paper["abs"]
+        logger.debug(f"[{source}] Processing paper {idx}/{len(papers)}: {url}")
+        abstract_content, categories = asyncio.run(get_metadata_crawler(source, url))
+        if abstract_content:
+            paper["summary"] = abstract_content
+            if categories:
+                paper["category"] = categories
+            filled_papers.append(paper)
+            logger.debug(f"[{source}] Successfully filled abstract for paper {idx}/{len(papers)}")
+        else:
+            logger.warning(f"[{source}] No abstract content found for paper {idx}/{len(papers)}: {url}")
+    logger.info(f"[{source}] Successfully filled {len(filled_papers)} out of {len(papers)} papers from {source}")
+    return filled_papers
+############# Not Finished yet
 
 def process_source(source: str, categories: str, output_base: str, output_dir: str = "data", cache_dir: str = "data/cache") -> dict:
     """

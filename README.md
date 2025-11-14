@@ -22,8 +22,15 @@
 
 ### ⚠️ 开发状态
 
-**尝试增加更多RSS源，发现大部分RSS源不包含文章摘要，目前只找到Nature提供官方api，其余需要爬取。尝试使用crawl4ai库进行，但是本人对爬取数据完全小白一个，science和aps网站会被cloudflare拦截，稳定性极差，nature和optica网页能成功爬取，不清楚有什么解决方案**  
-**本项目仅作交流学习用处，请注意遵守所在地法律法规，尤其是数据爬取**  
+**RSS 源限制**: 
+- 目前完全支持的源: **arXiv** 和 **Nature 系列**(通过官方 API)
+- 实验性支持: Science、Optica、APS(网页抓取,稳定性不佳)
+- 大部分学术期刊的 RSS 不包含摘要,需要额外抓取网页
+- Science 和 APS 网站易受拦截,抓取稳定性极差
+
+**法律提醒**: 
+本项目仅作学习交流用途,请注意遵守所在地法律法规,尤其是数据爬取相关规定。
+
 这是本人第一次在 GitHub 上传代码,如有不当之处,欢迎指正! 🙏
 
 ---
@@ -154,8 +161,34 @@ NATURE_API_KEY=your_nature_api_key
 
 ## 🎮 使用方法
 
+### 运行模式
+
+项目支持两种运行模式:
+
+#### 1️⃣ 定时任务模式(推荐)
+
 ```bash
 uv run main.py
+```
+
+程序将持续运行,按以下计划自动执行任务:
+- **每日 08:00**: 抓取新论文、排序并生成 AI 摘要
+- **每周日 10:00**: 重新排序所有论文并补充缺失的 AI 内容
+
+#### 2️⃣ 立即执行模式
+
+如需立即执行一次任务,可修改 `main.py` 底部代码:
+
+```python
+# 注释掉定时任务代码
+# schedule.every().day.at("08:00").do(main, args=args).tag('daily-tasks')
+# schedule.every().sunday.at("10:00").do(main_week_check, args=args).tag('weekly-tasks')
+# while True:
+#     schedule.run_pending()
+#     time.sleep(60)
+
+# 添加立即执行代码
+main(args)
 ```
 
 ### 可选参数:
@@ -176,26 +209,23 @@ uv run main.py
 --max_workers 4
   # 并行工作线程数,增加可加快 AI 处理速度
 
---output "2025-11-03"
-  # 输出文件基础名称 (默认为当前日期)
-
 --output-dir "data"
   # 输出文件目录 (默认: data)
 ```
 
 ### 执行流程:
 
- 📅 **每日**
+ 📅 **每日任务** (08:00 自动执行)
 
 1. 从配置的 RSS 源抓取最新论文
 2. 使用 Zotero 文献库嵌入向量对论文排序
 3. 为相关论文生成 AI 摘要
 4. 更新文件列表供 Web 界面使用
 
-📊 **每周集合检查**
+📊 **每周检查** (每周日 10:00 自动执行)
 
-1. 根据最新的Zotero文献夹重排全部文章
-2. 检查并补充ai生成内容
+1. 根据最新的 Zotero 文献夹重排全部文章
+2. 检查并补充缺失的 AI 生成内容
 
 ### 🌐 查看结果
 
@@ -227,19 +257,18 @@ Daily_Paper_RSS_AI_Enhance/
 │   └── rss_fetcher.py           # 通用多源 RSS 抓取器
 ├── data/                        # 论文数据存储 (JSONL 格式)
 │   └── cache/                   # RSS 缓存和更新日志
-├── assets/                      # Web 资源
-│   ├── file-list.txt            # 数据文件列表供 UI 使用
-│   └── *.png                    # 期刊 Logo 和截图
 ├── css/                         # 样式表
 │   └── style.css                # 主样式文件
 ├── js/                          # JavaScript 脚本
 │   └── app.js                   # 主应用逻辑
 ├── index.html                   # 主 Web 界面
-├── main.py                      # 主程序入口点
+├── main.py                      # 主程序入口点(定时任务调度)
 ├── logger_config.py             # 日志配置
+├── test.py                      # 测试文件
 ├── pyproject.toml               # 项目依赖
 ├── uv.lock                      # 依赖锁文件
 ├── .gitignore                   # Git 忽略规则
+├── DISCLAIMER.md                # 免责声明
 ├── LICENSE                      # AGPL-3.0 许可证
 └── README.md                    # 本文件
 ```
@@ -249,6 +278,23 @@ Daily_Paper_RSS_AI_Enhance/
 ## 🔧 配置详解
 
 ### 📡 RSS 来源配置
+
+目前支持的 RSS 源:
+- ✅ **arXiv**: 完全支持,包含摘要
+- ✅ **Nature 系列**: 通过官方 API 支持,包含摘要
+- ⚠️ **Science**: 实验性支持,易受拦截,稳定性较差
+- ⚠️ **Optica**: 实验性支持,网页抓取可用
+- ⚠️ **APS (Physical Review)**: 实验性支持,易受拦截,稳定性较差
+- **注意**: 实验性支持项目需要将fetcher/rss_fetcher.py中的对应代码取消注释以启用，具体使用方法参阅[crawl4ai](https://github.com/unclecode/crawl4ai)
+```python
+# 766-770
+################## Not Finished yet
+# # # Extract the abstract by a crawler implemented with crawl4ai
+# if source != 'arxiv':
+#     new_papers = fill_abstracts(source, new_papers)
+################## Not Finished yet
+```
+
 
 修改 `main.py` 中的 `--sources` 参数:
 
@@ -287,6 +333,26 @@ Daily_Paper_RSS_AI_Enhance/
 
 完整列表见: [Nature Portfolio](https://www.nature.com/siteindex)
 
+#### 可用的 Science 期刊 (实验性，不稳定):
+
+| 期刊代码 | 期刊名称 |
+|---------|----------|
+| `science` | Science |
+| `sciadv` | Science Advances |
+
+#### 可用的 Optica 期刊 (实验性):
+
+| 期刊代码 | 期刊名称 |
+|---------|----------|
+| `optica` | Optica |
+
+#### 可用的 APS 期刊 (实验性，不稳定):
+
+| 期刊代码 | 期刊名称 |
+|---------|----------|
+| `prl` | Physical Review Letters |
+| `prx` | Physical Review X |
+
 ### 🤖 LLM 模型配置
 
 修改 `--model_name` 参数:
@@ -299,6 +365,8 @@ Daily_Paper_RSS_AI_Enhance/
 --model_name "gpt-4o"
 # 或任何 OpenAI 兼容的模型
 ```
+
+**注意**: DeepSeek 模型会使用 `langchain_deepseek` 库,其他模型使用 `langchain_openai` 库。
 
 ### 🔢 嵌入向量模型配置
 
@@ -331,7 +399,41 @@ Daily_Paper_RSS_AI_Enhance/
 --max_workers 4  # 使用 4 个并行线程
 ```
 
-**注意**: 增加并行线程数可以加快处理速度,但也会增加 API 调用频率和成本。
+**注意**: 
+- 增加并行线程数可以显著加快处理速度
+- 但也会增加 API 调用频率和成本
+- 建议根据 API 限率和预算谨慎设置
+
+### 🎯 智能筛选配置
+
+项目会自动根据 Zotero 相似度评分筛选论文:
+
+- **评分阈值**: 3.6 分(满分 10 分)
+- **处理策略**: 仅对评分 ≥ 3.6 的论文生成 AI 摘要
+- **成本优化**: 避免为不相关论文消耗 API 额度
+
+如需修改阈值,请编辑 `ai/enhance.py` 中的条件:
+
+```python
+if item and item["score"]["max"] < 3.6:  # 修改此数值
+    logger.debug(f"[{source}] Skipping irrelevant item: {item['id']}")
+    item['AI'] = 'Skip'
+    return item
+```
+
+### ⚡ 运行方式说明
+
+项目默认使用 `schedule` 库实现定时任务,需要程序持续运行。
+
+**修改定时任务时间**: 编辑 `main.py` 文件底部:
+
+```python
+# 修改每日任务时间(默认 08:00)
+schedule.every().day.at("08:00").do(main, args=args).tag('daily-tasks')
+
+# 修改每周任务时间(默认周日 10:00)
+schedule.every().sunday.at("10:00").do(main_week_check, args=args).tag('weekly-tasks')
+```
 
 ---
 
@@ -385,14 +487,17 @@ Daily_Paper_RSS_AI_Enhance/
 
 ## 📋 待办事项 (TODO)
 
-- [ ] **添加更多 RSS 源 (Science、PNAS、Physical Review Letters 等)**
-- [ ] 添加数据分析和可视化页面
+- [ ] **改进稳定性**: 解决 Science 和 APS 被拦截的问题
+- [ ] **添加更多 RSS 源**: PNAS、Physical Review Letters、JACS 等
+- [ ] **添加数据分析页面**: 论文趋势分析和可视化
+- [ ] **Web UI 改进**: 添加论文导出、标签管理等功能
 
 ---
 
 ## 🐛 已知问题
 
-- 目前仅支持 Arxiv 和 Springer Nature
+- **稳定性**: Science 和 APS 网站会被拦截,抓取成功率不稳定
+- **RSS 源限制**: 大部分学术期刊的 RSS 不包含摘要,需要额外抓取
 
 ---
 
@@ -432,10 +537,17 @@ AGPL-3.0 确保:
 - [pyzotero](https://github.com/urschrei/pyzotero) - Zotero API 客户端
 - [feedparser](https://github.com/kurtmckee/feedparser) - RSS/Atom 订阅解析器
 - [langchain](https://github.com/langchain-ai/langchain) - LLM 框架
+- [langchain-openai](https://github.com/langchain-ai/langchain) - OpenAI LLM 集成
+- [langchain-deepseek](https://github.com/langchain-ai/langchain-deepseek) - DeepSeek LLM 集成
 - [OpenAI Python SDK](https://github.com/openai/openai-python) - API 客户端
+- [sentence-transformers](https://github.com/UKPLab/sentence-transformers) - 嵌入向量模型
+- [PyTorch](https://pytorch.org/) - 机器学习框架
 - [requests](https://github.com/psf/requests) - HTTP 库
+- [beautifulsoup4](https://www.crummy.com/software/BeautifulSoup/) - HTML 解析库
 - [numpy](https://github.com/numpy/numpy) - 数值计算库
-- [crawl4ai](https://github.com/unclecode/crawl4ai) - 爬虫工具
+- [crawl4ai](https://github.com/unclecode/crawl4ai) - 爬虫工具(实验性)
+- [schedule](https://github.com/dbader/schedule) - 定时任务调度库
+- [tqdm](https://github.com/tqdm/tqdm) - 进度条库
 
 ### AI 网关
 
@@ -456,7 +568,7 @@ AGPL-3.0 确保:
 
 ---
 
-**最后更新**: 2025-11-11
+**最后更新**: 2025-11-14
 
 ---
 
