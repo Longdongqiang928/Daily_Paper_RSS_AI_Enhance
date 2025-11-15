@@ -12,6 +12,10 @@
 
 ## 💡 项目简介
 
+<p align="center">
+  <img src="assets/logo.png" alt="logo" width="100"/>
+</p>
+
 这是一个**本地化运行**的学术论文推荐系统,集成了 RSS 订阅、AI 智能摘要生成和基于 Zotero 文献库的个性化排序功能。系统能够:
 
 - 📡 **自动抓取**多个学术期刊的最新论文(arXiv、Nature 等)
@@ -85,8 +89,7 @@
 
 ### 📑 论文详情页
 显示完整的 AI 生成摘要,包括研究动机、方法、结果和结论
-
-![论文详情](assets/paper_details.png)
+<img src="assets/paper_details.png" alt="论文详情" width="300"/>
 
 ### ⭐ 收藏夹系统
 按文件夹组织你收藏的论文,方便管理
