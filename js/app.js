@@ -15,8 +15,8 @@ const AppState = {
         collections: new Set(),
         searchQuery: ''
     },
-    favorites: JSON.parse(localStorage.getItem('favorites')) || {},
-    favoritesFolders: JSON.parse(localStorage.getItem('favoritesFolders')) || ['Default'],
+    favorites: {},
+    favoritesFolders: ['Default'],
     updateInfo: null,
     language: localStorage.getItem('preferredLanguage') || 'Chinese'
 };
@@ -29,6 +29,38 @@ async function loadUpdateInfo() {
         displayUpdateInfo();
     } catch (error) {
         console.error('Failed to load update info:', error);
+    }
+}
+
+async function loadFavoritesFromServer() {
+    try {
+        const response = await fetch('/api/favorites');
+        if (response.ok) {
+            AppState.favorites = await response.json();
+            console.log('Favorites loaded from server:', AppState.favorites);
+        } else {
+            console.warn('Failed to load favorites from server, using default');
+            AppState.favorites = {};
+        }
+    } catch (error) {
+        console.error('Failed to load favorites:', error);
+        AppState.favorites = {};
+    }
+}
+
+async function loadFavoritesFoldersFromServer() {
+    try {
+        const response = await fetch('/api/favorites/folders');
+        if (response.ok) {
+            AppState.favoritesFolders = await response.json();
+            console.log('Folders loaded from server:', AppState.favoritesFolders);
+        } else {
+            console.warn('Failed to load folders from server, using default');
+            AppState.favoritesFolders = ['Default'];
+        }
+    } catch (error) {
+        console.error('Failed to load folders:', error);
+        AppState.favoritesFolders = ['Default'];
     }
 }
 
@@ -862,14 +894,30 @@ function createAndAddToFolder(paperId) {
     
     if (!AppState.favoritesFolders.includes(folderName)) {
         AppState.favoritesFolders.push(folderName);
-        localStorage.setItem('favoritesFolders', JSON.stringify(AppState.favoritesFolders));
+        saveFavoritesFolders();
     }
     
     addToFavoritesFolder(paperId, folderName);
 }
 
-function saveFavorites() {
-    localStorage.setItem('favorites', JSON.stringify(AppState.favorites));
+async function saveFavorites() {
+    try {
+        const response = await fetch('/api/favorites', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(AppState.favorites)
+        });
+        
+        if (response.ok) {
+            console.log('Favorites saved to server');
+        } else {
+            console.error('Failed to save favorites to server');
+        }
+    } catch (error) {
+        console.error('Error saving favorites:', error);
+    }
 }
 
 function displayFavorites() {
@@ -948,8 +996,28 @@ function deleteFolder(folderName) {
         delete AppState.favorites[folderName];
         AppState.favoritesFolders = AppState.favoritesFolders.filter(f => f !== folderName);
         saveFavorites();
-        localStorage.setItem('favoritesFolders', JSON.stringify(AppState.favoritesFolders));
+        saveFavoritesFolders();
         displayFavorites();
+    }
+}
+
+async function saveFavoritesFolders() {
+    try {
+        const response = await fetch('/api/favorites/folders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(AppState.favoritesFolders)
+        });
+        
+        if (response.ok) {
+            console.log('Folders saved to server');
+        } else {
+            console.error('Failed to save folders to server');
+        }
+    } catch (error) {
+        console.error('Error saving folders:', error);
     }
 }
 
@@ -1020,7 +1088,9 @@ async function initApp() {
     // Load data
     await Promise.all([
         loadUpdateInfo(),
-        loadPapers()
+        loadPapers(),
+        loadFavoritesFromServer(),
+        loadFavoritesFoldersFromServer()
     ]);
     
     // Set up event listeners

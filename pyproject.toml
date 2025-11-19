@@ -25,6 +25,8 @@ dependencies = [
     "langchain-deepseek>=1.0.0",
     "schedule>=1.2.2",
     "crawl4ai>=0.7.6",
+    "flask>=3.0.0",
+    "flask-cors>=4.0.0",
 ]
 
 [tool.uv.sources]
