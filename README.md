@@ -67,7 +67,8 @@
 ### 🌐 精美 Web 界面
 - ✅ 按文献夹搜索和筛选
 - ✅ 日期范围筛选
-- ✅ 收藏夹系统
+- ✅ 永久收藏夹系统(支持多文件夹管理)
+- ✅ 收藏数据本地持久化存储
 - ✅ 响应式设计,支持桌面和移动端
 
 ---
@@ -89,10 +90,13 @@
 
 ### 📑 论文详情页
 显示完整的 AI 生成摘要,包括研究动机、方法、结果和结论
-<img src="assets/paper_details.png" alt="论文详情" width="300"/>
+<p align="center">
+  <img src="assets/paper_details.png" alt="论文详情" width="300"/>
+</p>
 
-### ⭐ 收藏夹系统
-按文件夹组织你收藏的论文,方便管理
+
+### ⭐ 永久收藏夹系统
+支持多文件夹分类管理,所有收藏数据永久保存在本地,重启浏览器后依然保留
 
 ![收藏夹系统](assets/favorites_system.png)
 
@@ -129,7 +133,7 @@ uv sync
 在系统环境变量中设置以下内容:
 
 ```bash
-# New-API (必选,或任何 OpenAI 兼容的提供商)
+# 任何 OpenAI 兼容的提供商(必选), 可选:项目通过New-API网关关联本地LMStudio 
 NEWAPI_KEY_AD=your_newapi_key
 NEWAPI_BASE_URL=https://127.0.0.1:yourport/v1
 
@@ -143,7 +147,7 @@ NATURE_API_KEY=your_nature_api_key
 
 **获取密钥指引:**
 
-- **New-API 密钥和基础 URL**: 访问 [https://github.com/QuantumNous/new-api](https://github.com/QuantumNous/new-api) 生成。New-API 是一个开源 AI 网关,提供对多个 AI 提供商的访问(*在线*: OpenAI, Gemini, DeepSeek, Qwen, SiliconFlow; *本地*: Ollama, LMstudio 等)
+- **New-API 密钥和基础 URL**: (使用 OpenAI 兼容的提供商时仅需提供对应Base URL和密钥), 访问 [https://github.com/QuantumNous/new-api](https://github.com/QuantumNous/new-api) 生成。New-API 是一个开源 AI 网关,提供对多个 AI 提供商的访问(*在线*: OpenAI, Gemini, DeepSeek, Qwen, SiliconFlow; *本地*: Ollama, LMstudio 等)
 - **Zotero 用户 ID**: 从 [https://www.zotero.org/settings/keys](https://www.zotero.org/settings/keys) 获取
 - **Zotero API 密钥**: 在 [https://www.zotero.org/settings/keys/new](https://www.zotero.org/settings/keys/new) 生成(需要读取权限)
 - **Nature API 密钥**: 在 [Springer Nature API Portal](https://dev.springernature.com/) 申请
@@ -232,19 +236,28 @@ main(args)
 
 ### 🌐 查看结果
 
-#### 方式 1: 直接打开 HTML 文件
+#### 启动 API 服务器(推荐)
 
-双击 `index.html` 文件即可在浏览器中打开。
-
-#### 方式 2: 启动本地服务器
+为了使用**永久收藏夹**功能,推荐使用内置的 Flask API 服务器:
 
 ```bash
-python -m http.server 8000
+uv run api_server.py
 ```
 
-然后在浏览器中访问 `http://localhost:8000`
+默认在 `http://127.0.0.1:8000` 启动服务器,然后在浏览器中访问该地址。
 
----
+**自定义端口和主机**:
+
+```bash
+# 指定主机和端口
+uv run api_server.py --host 0.0.0.0:8080
+```
+
+**功能特性**:
+- ✅ 收藏数据永久保存在 `data/cache/favorites.json`
+- ✅ 文件夹配置保存在 `data/cache/favorites_folders.json`
+- ✅ 支持跨设备访问(修改 host 为 0.0.0.0)
+- ✅ 数据自动持久化,无需手动保存
 
 ## 📁 项目结构
 
@@ -259,12 +272,15 @@ Daily_Paper_RSS_AI_Enhance/
 ├── fetcher/                     # RSS 抓取模块
 │   └── rss_fetcher.py           # 通用多源 RSS 抓取器
 ├── data/                        # 论文数据存储 (JSONL 格式)
-│   └── cache/                   # RSS 缓存和更新日志
+│   └── cache/                   # RSS 缓存、更新日志和收藏数据
+│       ├── favorites.json       # 永久收藏数据
+│       └── favorites_folders.json # 收藏夹文件夹列表
 ├── css/                         # 样式表
 │   └── style.css                # 主样式文件
 ├── js/                          # JavaScript 脚本
 │   └── app.js                   # 主应用逻辑
 ├── index.html                   # 主 Web 界面
+├── api_server.py                # Flask API 服务器(收藏夹持久化)
 ├── main.py                      # 主程序入口点(定时任务调度)
 ├── logger_config.py             # 日志配置
 ├── test.py                      # 测试文件
@@ -545,6 +561,8 @@ AGPL-3.0 确保:
 - [OpenAI Python SDK](https://github.com/openai/openai-python) - API 客户端
 - [sentence-transformers](https://github.com/UKPLab/sentence-transformers) - 嵌入向量模型
 - [PyTorch](https://pytorch.org/) - 机器学习框架
+- [Flask](https://github.com/pallets/flask) - Web 框架(用于 API 服务器)
+- [Flask-CORS](https://github.com/corydolphin/flask-cors) - Flask 跨域资源共享支持
 - [requests](https://github.com/psf/requests) - HTTP 库
 - [beautifulsoup4](https://www.crummy.com/software/BeautifulSoup/) - HTML 解析库
 - [numpy](https://github.com/numpy/numpy) - 数值计算库
@@ -571,7 +589,7 @@ AGPL-3.0 确保:
 
 ---
 
-**最后更新**: 2025-11-14
+**最后更新**: 2025-11-19
 
 ---
 
