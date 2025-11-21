@@ -1081,6 +1081,23 @@ function saveLanguagePreference() {
     }
 }
 
+// Back to top functionality
+function toggleBackToTopButton() {
+    const backToTopButton = document.getElementById('back-to-top');
+    if (window.scrollY > 300) {
+        backToTopButton.classList.add('visible');
+    } else {
+        backToTopButton.classList.remove('visible');
+    }
+}
+
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+
 // Initialize app
 async function initApp() {
     console.log('Initializing app...');
@@ -1117,6 +1134,9 @@ async function initApp() {
             card.style.setProperty('--y', `${y}%`);
         }
     });
+    
+    // Back to top button visibility
+    window.addEventListener('scroll', toggleBackToTopButton);
     
     // Display home page by default
     displayUpdateInfo();
