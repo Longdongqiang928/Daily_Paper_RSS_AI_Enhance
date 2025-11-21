@@ -85,6 +85,18 @@ def update_favorites():
         return jsonify({'status': 'error', 'message': 'Failed to save favorites'}), 500
 
 
+@app.route('/api/favorites/ids', methods=['GET'])
+def get_favorite_ids():
+    """Get all favorite paper IDs (flattened from all folders)"""
+    favorites = load_favorites()
+    all_ids = []
+    for folder_ids in favorites.values():
+        all_ids.extend(folder_ids)
+    # Remove duplicates
+    unique_ids = list(set(all_ids))
+    return jsonify(unique_ids)
+
+
 @app.route('/api/favorites/folders', methods=['GET'])
 def get_folders():
     """Get all folders"""

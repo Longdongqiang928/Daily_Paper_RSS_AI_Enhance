@@ -5,6 +5,8 @@ const AppState = {
     currentPage: 'home',
     selectedDates: new Set(),
     availableDates: [],
+    loadedDates: new Set(), // Track which dates have been loaded
+    dateFileMapping: {}, // Map dates to their file names
     calendarMode: 'single', // 'single' or 'range'
     calendarRangeStart: null,
     calendarRangeEnd: null,
@@ -64,12 +66,12 @@ async function loadFavoritesFoldersFromServer() {
     }
 }
 
-async function loadPapers() {
-    const papers = [];
-    const availableDates = [];
-    
+async function loadFileList() {
+    /**
+     * Load file list and build date-to-file mapping without loading actual papers.
+     * This is fast and allows us to know what dates are available.
+     */
     try {
-        // Load file list from file-list.txt
         const fileListResponse = await fetch('data/cache/file-list.txt');
         const fileListText = await fileListResponse.text();
         
@@ -78,75 +80,198 @@ async function loadPapers() {
             .map(line => line.trim())
             .filter(line => line && line.endsWith('.jsonl'));
         
+        const availableDates = [];
+        const dateFileMapping = {};
+        
         for (const fileName of files) {
             // Extract date from filename (e.g., "2025-11-03_nature.jsonl" -> "2025-11-03")
             const dateMatch = fileName.match(/(\d{4}-\d{2}-\d{2})/);
             const fileDate = dateMatch ? dateMatch[1] : null;
             
-            // Extract source/journal from filename (e.g., "2025-11-03_nature.jsonl" -> "nature")
-            const sourceMatch = fileName.match(/\d{4}-\d{2}-\d{2}_([^.]+)\.jsonl/);
-            const source = sourceMatch ? sourceMatch[1] : 'unknown';
-            
-            if (fileDate && !availableDates.includes(fileDate)) {
-                availableDates.push(fileDate);
-            }
-            
-            // Try to load AI enhanced version first
-            const baseName = fileName.replace('.jsonl', '');
-            const enhancedPath = `data/${baseName}_AI_enhanced_${AppState.language}.jsonl`;
-            const originalPath = `data/${fileName}`;
-            
-            try {
-                let response = await fetch(enhancedPath);
-                let loadedFrom = enhancedPath;
-                
-                if (!response.ok) {
-                    // Fallback to original file
-                    response = await fetch(originalPath);
-                    loadedFrom = originalPath;
+            if (fileDate) {
+                if (!availableDates.includes(fileDate)) {
+                    availableDates.push(fileDate);
+                    dateFileMapping[fileDate] = [];
                 }
-                
-                if (response.ok) {
-                    const text = await response.text();
-                    const lines = text.trim().split('\n');
-                    for (const line of lines) {
-                        if (line.trim()) {
-                            const paper = JSON.parse(line);
-                            // Add file date and source to paper object
-                            paper.fileDate = fileDate;
-                            paper.source = source;
-                            papers.push(paper);
-                        }
-                    }
-                    console.log(`Loaded ${lines.length} papers from ${loadedFrom} (date: ${fileDate})`);
-                }
-            } catch (error) {
-                console.error(`Failed to load papers from ${fileName}:`, error);
+                dateFileMapping[fileDate].push(fileName);
             }
         }
         
         // Sort dates descending
         availableDates.sort((a, b) => b.localeCompare(a));
         
-        AppState.papers = papers;
-        AppState.filteredPapers = papers;
         AppState.availableDates = availableDates;
-        console.log(`Total papers loaded: ${papers.length}`);
+        AppState.dateFileMapping = dateFileMapping;
+        
         console.log(`Available dates: ${availableDates.join(', ')}`);
-        
-        // Automatically select today's date or the most recent date
-        if (availableDates.length > 0) {
-            const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
-            const defaultDate = availableDates.includes(today) ? today : availableDates[0];
-            AppState.selectedDates.add(defaultDate);
-            console.log(`Default date selected: ${defaultDate}`);
-        }
-        
-        // Initialize filters
-        extractFilterOptions();
+        console.log('Date-file mapping built');
         
     } catch (error) {
-        console.error('Failed to load papers:', error);
+        console.error('Failed to load file list:', error);
+    }
+}
+
+async function loadPapersForDate(date) {
+    /**
+     * Load papers for a specific date.
+     * Returns the loaded papers.
+     */
+    if (AppState.loadedDates.has(date)) {
+        console.log(`Papers for ${date} already loaded, skipping`);
+        return [];
+    }
+    
+    const files = AppState.dateFileMapping[date] || [];
+    const papers = [];
+    
+    for (const fileName of files) {
+        // Extract date and source from filename
+        const dateMatch = fileName.match(/(\d{4}-\d{2}-\d{2})/);
+        const fileDate = dateMatch ? dateMatch[1] : null;
+        
+        const sourceMatch = fileName.match(/\d{4}-\d{2}-\d{2}_([^.]+)\.jsonl/);
+        const source = sourceMatch ? sourceMatch[1] : 'unknown';
+        
+        // Try to load AI enhanced version first
+        const baseName = fileName.replace('.jsonl', '');
+        const enhancedPath = `data/${baseName}_AI_enhanced_${AppState.language}.jsonl`;
+        const originalPath = `data/${fileName}`;
+        
+        try {
+            let response = await fetch(enhancedPath);
+            let loadedFrom = enhancedPath;
+            
+            if (!response.ok) {
+                // Fallback to original file
+                response = await fetch(originalPath);
+                loadedFrom = originalPath;
+            }
+            
+            if (response.ok) {
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                for (const line of lines) {
+                    if (line.trim()) {
+                        const paper = JSON.parse(line);
+                        // Add file date and source to paper object
+                        paper.fileDate = fileDate;
+                        paper.source = source;
+                        papers.push(paper);
+                    }
+                }
+                console.log(`Loaded ${lines.length} papers from ${loadedFrom} (date: ${fileDate})`);
+            }
+        } catch (error) {
+            console.error(`Failed to load papers from ${fileName}:`, error);
+        }
+    }
+    
+    AppState.loadedDates.add(date);
+    return papers;
+}
+
+async function loadPapersForDates(dates) {
+    /**
+     * Load papers for multiple dates.
+     * Only loads dates that haven't been loaded yet.
+     */
+    const newPapers = [];
+    
+    for (const date of dates) {
+        const papers = await loadPapersForDate(date);
+        newPapers.push(...papers);
+    }
+    
+    // Add to global papers list
+    AppState.papers.push(...newPapers);
+    
+    console.log(`Loaded ${newPapers.length} new papers, total: ${AppState.papers.length}`);
+    
+    // Update filter options
+    extractFilterOptions();
+    
+    return newPapers;
+}
+
+async function loadInitialPapers() {
+    /**
+     * Load only the initial set of papers:
+     * 1. Today's date (or most recent date)
+     * 2. Papers that are in favorites (to ensure they can be displayed)
+     */
+    try {
+        // First load the file list to know what's available
+        await loadFileList();
+        
+        if (AppState.availableDates.length === 0) {
+            console.log('No dates available');
+            return;
+        }
+        
+        // Determine the default date (today or most recent)
+        const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+        const defaultDate = AppState.availableDates.includes(today) ? today : AppState.availableDates[0];
+        
+        console.log(`Loading initial papers for date: ${defaultDate}`);
+        
+        // Load papers for the default date
+        await loadPapersForDates([defaultDate]);
+        
+        // Automatically select the default date
+        AppState.selectedDates.add(defaultDate);
+        console.log(`Default date selected: ${defaultDate}`);
+        
+        // Now check if there are favorite papers from other dates that need to be loaded
+        await loadFavoritePapers();
+        
+    } catch (error) {
+        console.error('Failed to load initial papers:', error);
+    }
+}
+
+async function loadFavoritePapers() {
+    /**
+     * Load papers that are in favorites but not yet loaded.
+     * This ensures favorited papers from other dates can be displayed.
+     */
+    const favoritePaperIds = new Set();
+    
+    // Collect all favorite paper IDs
+    for (const folder in AppState.favorites) {
+        AppState.favorites[folder].forEach(id => favoritePaperIds.add(id));
+    }
+    
+    if (favoritePaperIds.size === 0) {
+        console.log('No favorite papers to load');
+        return;
+    }
+    
+    // Check which favorite papers are not yet loaded
+    const loadedPaperIds = new Set(AppState.papers.map(p => p.id));
+    const missingFavoriteIds = [...favoritePaperIds].filter(id => !loadedPaperIds.has(id));
+    
+    if (missingFavoriteIds.length === 0) {
+        console.log('All favorite papers already loaded');
+        return;
+    }
+    
+    console.log(`Loading ${missingFavoriteIds.length} favorite papers from other dates`);
+    
+    // Load papers from dates that haven't been loaded yet
+    const datesToLoad = AppState.availableDates.filter(date => !AppState.loadedDates.has(date));
+    
+    for (const date of datesToLoad) {
+        await loadPapersForDates([date]);
+        
+        // Check if we've loaded all missing favorites
+        const stillMissing = missingFavoriteIds.filter(id => 
+            !AppState.papers.some(p => p.id === id)
+        );
+        
+        if (stillMissing.length === 0) {
+            console.log('All favorite papers loaded');
+            break;
+        }
     }
 }
 
@@ -606,7 +731,16 @@ function clearSearch() {
     applyFilters();
 }
 
-function applyFilters() {
+async function applyFilters() {
+    // Load papers for selected dates if not already loaded
+    if (AppState.selectedDates.size > 0) {
+        const datesToLoad = [...AppState.selectedDates].filter(date => !AppState.loadedDates.has(date));
+        if (datesToLoad.length > 0) {
+            console.log(`Loading papers for newly selected dates: ${datesToLoad.join(', ')}`);
+            await loadPapersForDates(datesToLoad);
+        }
+    }
+    
     let filtered = AppState.papers;
     
     // Apply date filter (only if dates are explicitly selected)
@@ -1102,13 +1236,15 @@ function scrollToTop() {
 async function initApp() {
     console.log('Initializing app...');
     
-    // Load data
+    // Load favorites and metadata first (these are fast)
     await Promise.all([
         loadUpdateInfo(),
-        loadPapers(),
         loadFavoritesFromServer(),
         loadFavoritesFoldersFromServer()
     ]);
+    
+    // Then load only the initial papers (today's date + favorites)
+    await loadInitialPapers();
     
     // Set up event listeners
     document.addEventListener('click', (e) => {
