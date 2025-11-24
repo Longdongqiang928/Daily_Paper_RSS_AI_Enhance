@@ -49,10 +49,11 @@ def parse_args():
     return parser.parse_args()
 
 def main(args):
+    """Daily update: fetch new papers and process them (no cache)"""
     current_time = datetime.now()
     date = current_time.strftime("%Y-%m-%d")
     rss_fetcher_main(date, args.output_dir, args.sources)
-    zotero_recommender_main(date, args.output_dir, args.embedding_model)
+    zotero_recommender_main(date, args.output_dir, args.embedding_model, use_cache=False)
     enhance_main(date, args.output_dir, args.model_name, args.language, args.max_workers)
 
     # Write list of files in data folder to file-list.txt
@@ -65,14 +66,21 @@ def main(args):
                 f.write(file + '\n')
 
 def main_week_check(args):
+    """Weekly check: re-process all existing files using cached Zotero library"""
     from pathlib import Path
 
     data_dir = args.output_dir
     if os.path.exists(data_dir) and os.path.isdir(data_dir):
         files = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
         files = list(set([str(f)[0:10] for f in files if '_AI_enhanced_' not in f]))
+        
+        # Sort files in chronological order (oldest to newest)
+        files.sort()
+        print(f"Processing {len(files)} dates in chronological order: {files}")
+        
+        # Process all files with cache enabled (only fetch Zotero once)
         for output in files:
-            zotero_recommender_main(output, args.output_dir, args.embedding_model)
+            zotero_recommender_main(output, args.output_dir, args.embedding_model, use_cache=True)
             enhance_main(output, args.output_dir, args.model_name, args.language, args.max_workers)
 
         # Write list of files in data folder to file-list.txt

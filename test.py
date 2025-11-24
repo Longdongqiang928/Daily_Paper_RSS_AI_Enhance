@@ -51,7 +51,7 @@ def parse_args():
 def main(args):
     date = "0000-00-00"
     rss_fetcher_main(date, args.output_dir, args.sources)
-    zotero_recommender_main(date, args.output_dir, args.embedding_model)
+    zotero_recommender_main(date, args.output_dir, args.embedding_model, use_cache=False)
     enhance_main(date, args.output_dir, args.model_name, args.language, args.max_workers)
 
     # Write list of files in data folder to file-list.txt
@@ -70,9 +70,13 @@ def main_week_check(args):
     if os.path.exists(data_dir) and os.path.isdir(data_dir):
         files = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
         files = list(set([str(f)[0:10] for f in files if '_AI_enhanced_' not in f]))
-        print(files)
+        
+        # Sort files in chronological order (oldest to newest)
+        files.sort()
+        print(f"Processing {len(files)} dates in chronological order: {files}")
+        
         for output in files:
-            zotero_recommender_main(output, args.output_dir, args.embedding_model)
+            zotero_recommender_main(output, args.output_dir, args.embedding_model, use_cache=True)
             enhance_main(output, args.output_dir, args.model_name, args.language, args.max_workers)
 
         # Write list of files in data folder to file-list.txt
@@ -87,5 +91,5 @@ def main_week_check(args):
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args)
-    # main_week_check(args)
+    # main(args)
+    main_week_check(args)

@@ -509,6 +509,7 @@ schedule.every().sunday.at("10:00").do(main_week_check, args=args).tag('weekly-t
 - [ ] **改进稳定性**: 解决 Science 和 APS 被拦截的问题
 - [ ] **添加更多 RSS 源**: PNAS、Physical Review Letters、JACS 等
 - [x] **网页性能优化**: 目前首次打开网页会默认加载所有文章,等待时间较长
+- [x] **zotero请求优化**: 每周检查时会多次重复请求zotero,需建立缓存机制,每周检查时只请求一次而每日更新不受影响
 - [ ] **添加数据分析页面**: 论文趋势分析和可视化
 
 ---

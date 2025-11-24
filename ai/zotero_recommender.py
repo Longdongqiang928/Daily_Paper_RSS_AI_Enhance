@@ -5,8 +5,10 @@ import os
 import json
 import sys
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Optional
 from openai import OpenAI
+import pickle
+from datetime import timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logger_config import get_logger
@@ -14,14 +16,19 @@ from logger_config import get_logger
 logger = get_logger(__name__)
 
 class ZoteroRecommender:
-    def __init__(self, embedding_model: str):
+    def __init__(self, embedding_model: str, use_cache: bool = False, cache_dir: str = 'data/cache'):
         """
         Initialize Zotero recommender with OpenAI-compatible embedding model.
         
         Args:
             embedding_model: Model name (e.g., 'text-embedding-3-small')
+            use_cache: If True, try to load corpus from cache instead of fetching from Zotero
+            cache_dir: Directory to store cache files
         """
         self.embedding_model_name = embedding_model
+        self.use_cache = use_cache
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
         
         # Initialize OpenAI client
         self.client = OpenAI(api_key=os.environ.get('NEWAPI_KEY_AD'), base_url=os.environ.get('NEWAPI_BASE_URL'))
@@ -31,9 +38,43 @@ class ZoteroRecommender:
         
         logger.info(f"Initialized ZoteroRecommender with model: {embedding_model}")
         logger.info(f"Using API base URL: {os.environ.get('NEWAPI_BASE_URL')}")
+        logger.info(f"Cache enabled: {use_cache}")
     
     def get_zotero_corpus(self) -> List[Dict]:
-        logger.info("Fetching Zotero corpus")
+        """
+        Get Zotero corpus, either from cache or by fetching from Zotero API.
+        Cache is used only if use_cache=True and cache exists and is recent (< 24 hours old).
+        """
+        cache_file = self.cache_dir / 'zotero_corpus.pkl'
+        cache_timestamp_file = self.cache_dir / 'zotero_corpus_timestamp.txt'
+        
+        # Check if we should use cache
+        if self.use_cache and cache_file.exists() and cache_timestamp_file.exists():
+            try:
+                # Read cache timestamp
+                with open(cache_timestamp_file, 'r') as f:
+                    cache_time_str = f.read().strip()
+                cache_time = datetime.fromisoformat(cache_time_str)
+                
+                # Check if cache is less than 24 hours old
+                if datetime.now() - cache_time < timedelta(hours=24):
+                    logger.info("Loading Zotero corpus from cache")
+                    with open(cache_file, 'rb') as f:
+                        cached_data = pickle.load(f)
+                    
+                    self.collections = cached_data['collections']
+                    corpus = cached_data['corpus']
+                    
+                    logger.info(f"Loaded {len(corpus)} papers from cache (cached at {cache_time})")
+                    logger.info(f"Total collections: {len(self.collections)}")
+                    return corpus
+                else:
+                    logger.info(f"Cache is older than 24 hours (cached at {cache_time}), fetching fresh data")
+            except Exception as e:
+                logger.warning(f"Failed to load cache: {e}, fetching fresh data")
+        
+        # Fetch from Zotero API
+        logger.info("Fetching Zotero corpus from API")
         zot = zotero.Zotero(os.environ.get('ZOTERO_ID'), 'user', os.environ.get('ZOTERO_KEY_AD'))
         collections = zot.everything(zot.collections())
         collections = {c['key']: c for c in collections}
@@ -54,7 +95,24 @@ class ZoteroRecommender:
             self.collections.update(paths)
         
         logger.info(f"Finished fetching Zotero corpus. Total collections found: {len(self.collections)}")
-
+        
+        # Save to cache if caching is enabled
+        if self.use_cache:
+            try:
+                cache_data = {
+                    'corpus': corpus,
+                    'collections': self.collections
+                }
+                with open(cache_file, 'wb') as f:
+                    pickle.dump(cache_data, f)
+                
+                with open(cache_timestamp_file, 'w') as f:
+                    f.write(datetime.now().isoformat())
+                
+                logger.info(f"Saved Zotero corpus to cache: {cache_file}")
+            except Exception as e:
+                logger.warning(f"Failed to save cache: {e}")
+        
         return corpus
     
     def get_embeddings(self, texts: List[str]) -> np.ndarray:
@@ -223,16 +281,25 @@ def process_multi_source_files(data_pattern: str, recommender: ZoteroRecommender
     return processed_files
 
 
-def zotero_recommender_main(data='0000-00-00', data_dir="data", embedding_model='qwen3-embedding-8b'):
+def zotero_recommender_main(data='0000-00-00', data_dir="data", embedding_model='qwen3-embedding-8b', use_cache=False):
+    """
+    Main entry point for Zotero recommender.
     
+    Args:
+        data: Date pattern to match files
+        data_dir: Directory containing the files
+        embedding_model: Embedding model name
+        use_cache: If True, use cached Zotero corpus (for weekly batch processing)
+    """
     logger.info("="*60)
     logger.info("Starting Zotero Recommender (Multi-Source, OpenAI-Compatible)")
     logger.info(f"Data pattern: {data}")
     logger.info(f"Embedding model: {embedding_model}")
     logger.info(f"API base URL: {os.environ.get('NEWAPI_BASE_URL')}")
+    logger.info(f"Use cache: {use_cache}")
     logger.info("="*60)
     
-    recommender = ZoteroRecommender(embedding_model)
+    recommender = ZoteroRecommender(embedding_model, use_cache=use_cache)
     
     # Process multiple source files
     processed_files = process_multi_source_files(data, recommender, data_dir)
