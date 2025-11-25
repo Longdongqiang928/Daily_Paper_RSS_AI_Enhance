@@ -1,4 +1,4 @@
-Please analyze the following abstract of papers. 
+Please analyze the following abstract of papers. Exclude LaTeX and complex mathematical notation, using standard UTF-8 characters instead.
 
 Content:
 {content}
