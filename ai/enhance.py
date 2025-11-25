@@ -67,14 +67,15 @@ class AIEnhancer:
                 api_base=os.environ.get('NEWAPI_BASE_URL'),
                 # base_url=self.base_url,
                 api_key=os.environ.get('NEWAPI_KEY_AD'),
-                max_tokens=4096
+                max_tokens=7000
             ).with_structured_output(Structure)
             logger.info(f"Connected to DeepSeek LLM: {self.model_name}")
         else:
             llm = ChatOpenAI(
                 model=self.model_name,
                 base_url=os.environ.get('NEWAPI_BASE_URL'),
-                api_key=os.environ.get('NEWAPI_KEY_AD')
+                api_key=os.environ.get('NEWAPI_KEY_AD'),
+                max_tokens=7000
             ).with_structured_output(Structure)
             logger.info(f"Connected to OpenAI-compatible LLM: {self.model_name}")
 
