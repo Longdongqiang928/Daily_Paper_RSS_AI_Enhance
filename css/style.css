@@ -1414,11 +1414,11 @@ body {
 }
 
 .summary-section {
-  margin-bottom: 1.5rem;
   padding: 1.5rem;
   background: rgba(255, 255, 255, 0.03);
   border-left: 3px solid var(--color-primary);
   border-radius: 8px;
+  height: 100%;
 }
 
 .summary-section h4 {
@@ -1433,6 +1433,25 @@ body {
 .summary-section p {
   color: var(--color-text-secondary);
   line-height: 1.7;
+}
+
+/* TL;DR section stays full width */
+.summary-section.tldr-section {
+  margin-bottom: 1.5rem;
+}
+
+/* 2x2 Grid for Motivation, Method, Result, Conclusion */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .paper-abstract {
@@ -1748,6 +1767,83 @@ body {
 
 .save-settings-btn i {
   font-size: 1.125rem;
+}
+
+/* Modal Footer - Sticky Frosted Glass */
+.modal-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.5rem 2rem;  
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(10px) saturate(180%);
+  border-top: 1px solid var(--card-border);
+  gap: 1rem;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.footer-info {
+  display: none;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.footer-link {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 10px;
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.footer-link:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.footer-link i {
+  font-size: 1.125rem;
+  color: var(--color-primary);
+}
+
+.footer-link span {
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .modal-footer {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+  }
+  
+  .footer-links {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+  
+  .footer-link {
+    flex: 1;
+    justify-content: center;
+  }
 }
 
 /* Back to Top Button */

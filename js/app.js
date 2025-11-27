@@ -864,42 +864,35 @@ function showPaperDetails(paperId) {
                 <p>${authors}</p>
             </div>
             
-            <div class="paper-links">
-                ${paper.abs ? `<a href="${paper.abs}" target="_blank" class="paper-link">
-                    <i class="fa-solid fa-file-alt"></i> Abstract
-                </a>` : ''}
-                ${paper.pdf ? `<a href="${paper.pdf}" target="_blank" class="paper-link">
-                    <i class="fa-solid fa-file-pdf"></i> PDF
-                </a>` : ''}
-            </div>
-            
             ${hasAI ? `
                 <div class="ai-summary">
                     <h3><i class="fa-solid fa-brain"></i> AI-Generated Summary</h3>
                     
-                    <div class="summary-section">
+                    <div class="summary-section tldr-section">
                         <h4>TL;DR</h4>
                         <p>${paper.AI.tldr}</p>
                     </div>
                     
-                    <div class="summary-section">
-                        <h4>Motivation</h4>
-                        <p>${paper.AI.motivation}</p>
-                    </div>
-                    
-                    <div class="summary-section">
-                        <h4>Method</h4>
-                        <p>${paper.AI.method}</p>
-                    </div>
-                    
-                    <div class="summary-section">
-                        <h4>Result</h4>
-                        <p>${paper.AI.result}</p>
-                    </div>
-                    
-                    <div class="summary-section">
-                        <h4>Conclusion</h4>
-                        <p>${paper.AI.conclusion}</p>
+                    <div class="summary-grid">
+                        <div class="summary-section">
+                            <h4>Motivation</h4>
+                            <p>${paper.AI.motivation}</p>
+                        </div>
+                        
+                        <div class="summary-section">
+                            <h4>Method</h4>
+                            <p>${paper.AI.method}</p>
+                        </div>
+                        
+                        <div class="summary-section">
+                            <h4>Result</h4>
+                            <p>${paper.AI.result}</p>
+                        </div>
+                        
+                        <div class="summary-section">
+                            <h4>Conclusion</h4>
+                            <p>${paper.AI.conclusion}</p>
+                        </div>
                     </div>
                 </div>
             ` : ''}
@@ -907,6 +900,22 @@ function showPaperDetails(paperId) {
             <div class="paper-abstract">
                 <h3><i class="fa-solid fa-align-left"></i> Original Abstract</h3>
                 <p>${paper.summary || 'No abstract available'}</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div class="footer-info">
+                <i class="fa-solid fa-info-circle"></i>
+                <span>Paper Details</span>
+            </div>
+            <div class="footer-links">
+                ${paper.abs ? `<a href="${paper.abs}" target="_blank" class="footer-link">
+                    <i class="fa-solid fa-file-alt"></i>
+                    <span>Abstract</span>
+                </a>` : ''}
+                ${paper.pdf ? `<a href="${paper.pdf}" target="_blank" class="footer-link">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span>PDF</span>
+                </a>` : ''}
             </div>
         </div>
     `;
