@@ -164,6 +164,8 @@ class ZoteroRecommender:
             if 'score' not in c:
                 c['score'] = {}
         
+        candidate_texts = [paper['summary'] for paper in candidates]
+        candidate_embeddings = self.get_embeddings(candidate_texts)
         logger.info(f"[{source}] Processing {len(candidates)} candidates against {len(self.collections)} collections")
         idx_collection = 1
         for collection in self.collections:
@@ -184,11 +186,9 @@ class ZoteroRecommender:
                 
                 # Get embeddings using OpenAI-compatible API
                 corpus_texts = [paper['data']['abstractNote'] for paper in collection_corpus]
-                candidate_texts = [paper['summary'] for paper in candidates]
                 
                 logger.debug(f"[{source}] Getting embeddings for collection: {collection}")
                 corpus_embeddings = self.get_embeddings(corpus_texts)
-                candidate_embeddings = self.get_embeddings(candidate_texts)
                 
                 # Compute similarity
                 sim = self.compute_similarity(candidate_embeddings, corpus_embeddings)
