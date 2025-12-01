@@ -346,6 +346,20 @@ function displayPapers() {
         return scoreB - scoreA;
     });
     
+    // Check if there are no papers to display
+    if (sortedPapers.length === 0) {
+        container.innerHTML = `
+            <div class="no-papers-container">
+                <div class="no-papers-icon">
+                    <i class="fa-solid fa-mug-hot"></i>
+                </div>
+                <h2 class="no-papers-title">No Paper Today. Take a Rest!</h2>
+                <p class="no-papers-subtitle">There are no papers matching your current filters.</p>
+            </div>
+        `;
+        return;
+    }
+    
     let html = '<div class="cards-container">';
     
     sortedPapers.forEach(paper => {
@@ -381,7 +395,7 @@ function displayPapers() {
     
     html += '</div>';
     
-    container.innerHTML = html || '<div class="no-papers">No papers found matching your filters.</div>';
+    container.innerHTML = html;
 }
 
 function displayFilters() {
