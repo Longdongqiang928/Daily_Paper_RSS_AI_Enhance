@@ -9,6 +9,7 @@ dependencies = [
     "crawl4ai>=0.7.7",
     "feedparser>=6.0.12",
     "flask>=3.1.2",
+    "flask-cors>=6.0.1",
     "langchain>=1.1.0",
     "langchain-deepseek>=1.0.1",
     "langchain-openai>=1.1.0",
