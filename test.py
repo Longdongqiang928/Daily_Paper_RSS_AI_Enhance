@@ -1,7 +1,4 @@
 import argparse
-from datetime import datetime
-import schedule
-import time
 import os
 from fetcher.rss_fetcher import rss_fetcher_main
 from ai.zotero_recommender import zotero_recommender_main
@@ -24,7 +21,7 @@ def parse_args():
     parser.add_argument(
         "--embedding_model", 
         type=str, 
-        default="qwen3-embedding-8b",
+        default="qwen3-embedding-8b-f16",
         help="OpenAI-compatible embedding model name"
     )
     parser.add_argument(
@@ -91,5 +88,5 @@ def main_week_check(args):
 
 if __name__ == '__main__':
     args = parse_args()
-    # main(args)
-    main_week_check(args)
+    main(args)
+    # main_week_check(args)

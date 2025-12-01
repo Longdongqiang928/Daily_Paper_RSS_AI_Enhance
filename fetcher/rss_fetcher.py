@@ -30,8 +30,6 @@ Usage:
         # Cache files: rss_cache_arxiv.json, rss_cache_nature.json
 """
 
-from functools import cache
-from unicodedata import category
 import feedparser
 import json
 import os

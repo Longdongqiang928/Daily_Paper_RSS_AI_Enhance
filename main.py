@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument(
         "--embedding_model", 
         type=str, 
-        default="qwen3-embedding-8b",
+        default="qwen3-embedding-8b-f16",
         help="OpenAI-compatible embedding model name"
     )
     parser.add_argument(

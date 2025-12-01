@@ -4,8 +4,6 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict
 from pathlib import Path
-import dotenv
-import argparse
 from tqdm import tqdm
 
 from langchain_openai import ChatOpenAI
