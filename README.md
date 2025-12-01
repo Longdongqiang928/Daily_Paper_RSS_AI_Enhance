@@ -126,16 +126,15 @@ cd Daily_Paper_RSS_AI_Enhance
 uv sync
 ```
 
-> **注意**: 首次安装可能需要下载 PyTorch 等大型包,请耐心等待。
 
 #### 3. 配置环境变量
 
 在系统环境变量中设置以下内容:
 
 ```bash
-# 任何 OpenAI 兼容的提供商(必选), 可选:项目通过New-API网关关联本地LMStudio 
-NEWAPI_KEY_AD=your_newapi_key
-NEWAPI_BASE_URL=https://127.0.0.1:yourport/v1
+# 任何 OpenAI 兼容的提供商(必选), 也可通过New-API网关关联本地LMStudio 
+NEWAPI_KEY_AD=your_api_key
+NEWAPI_BASE_URL=your_base_url
 
 # Zotero API (必选)
 ZOTERO_KEY_AD=your_zotero_api_key
@@ -147,92 +146,58 @@ NATURE_API_KEY=your_nature_api_key
 
 **获取密钥指引:**
 
-- **New-API 密钥和基础 URL**: (使用 OpenAI 兼容的提供商时仅需提供对应Base URL和密钥), 访问 [https://github.com/QuantumNous/new-api](https://github.com/QuantumNous/new-api) 生成。New-API 是一个开源 AI 网关,提供对多个 AI 提供商的访问(*在线*: OpenAI, Gemini, DeepSeek, Qwen, SiliconFlow; *本地*: Ollama, LMstudio 等)
+- **OpenAI 兼容的提供商API_KEY和BASE_URL**: 使用 OpenAI 兼容的提供商时仅需提供对应Base URL和密钥
+(可选)*或者使用NEW-API管理本地及云端模型接口: 访问 [https://github.com/QuantumNous/new-api](https://github.com/QuantumNous/new-api) 生成。New-API 是一个开源 AI 网关,提供对多个 AI 提供商的访问(*在线*: OpenAI, Gemini, DeepSeek, Qwen, SiliconFlow; *本地*: Ollama, LMstudio 等)*
 - **Zotero 用户 ID**: 从 [https://www.zotero.org/settings/keys](https://www.zotero.org/settings/keys) 获取
 - **Zotero API 密钥**: 在 [https://www.zotero.org/settings/keys/new](https://www.zotero.org/settings/keys/new) 生成(需要读取权限)
 - **Nature API 密钥**: 在 [Springer Nature API Portal](https://dev.springernature.com/) 申请
 
-#### 4. 自定义配置(可选)
+#### 4. 自定义配置
 
-运行 `main.py` 时可以自定义以下参数:
+运行 `main.py` 和 `test.py` 时可以自定义以下参数:
 
 ```bash
---sources           # RSS 来源和分类
---model_name        # 生成 AI 内容的模型名称
---embedding_model   # 生成嵌入向量的模型名称
---language          # 输出语言 (Chinese 或 English)
---max_workers       # 并行工作线程数
+--sources "arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms"
+  # RSS 来源和分类 (例如: arxiv:physics+quant-ph,nature:nature+nphoton)
+--model_name "qwen3-30b-a3b-instruct-2507"
+  # 生成 AI 内容的模型名称
+--embedding_model "qwen3-embedding-8b"
+  # 生成嵌入向量的模型名称
+--language "Chinese"
+  # 输出语言 (Chinese 或 English)
+--max_workers 4
+  # 并行工作线程数,增加可加快 AI 处理速度
 ```
 
 ---
 
 ## 🎮 使用方法
 
-### 运行模式
-
-项目支持两种运行模式:
-
-#### 1️⃣ 定时任务模式(推荐)
+### 📅 日常运行
 
 ```bash
 uv run main.py
 ```
-
 程序将持续运行,按以下计划自动执行任务:
-- **每日 08:00**: 抓取新论文、排序并生成 AI 摘要
-- **每周日 10:00**: 重新排序所有论文并补充缺失的 AI 内容
-
-#### 2️⃣ 立即执行模式
-
-如需立即执行一次任务,可修改 `main.py` 底部代码:
-
-```python
-# 注释掉定时任务代码
-# schedule.every().day.at("08:00").do(main, args=args).tag('daily-tasks')
-# schedule.every().sunday.at("10:00").do(main_week_check, args=args).tag('weekly-tasks')
-# while True:
-#     schedule.run_pending()
-#     time.sleep(60)
-
-# 添加立即执行代码
-main(args)
-```
-
-### 可选参数:
-
-```bash
---sources "arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms"
-  # RSS 来源和分类 (例如: arxiv:physics+quant-ph,nature:nature+nphoton)
-
---model_name "qwen3-30b-a3b-instruct-2507"
-  # 生成 AI 内容的模型名称
-
---embedding_model "qwen3-embedding-8b"
-  # 生成嵌入向量的模型名称
-
---language "Chinese"
-  # 输出语言 (Chinese 或 English)
-
---max_workers 4
-  # 并行工作线程数,增加可加快 AI 处理速度
-
---output-dir "data"
-  # 输出文件目录 (默认: data)
-```
-
-### 执行流程:
-
- 📅 **每日任务** (08:00 自动执行)
-
+- 📅 **每日任务** (08:00 自动执行)
 1. 从配置的 RSS 源抓取最新论文
 2. 使用 Zotero 文献库嵌入向量对论文排序
 3. 为相关论文生成 AI 摘要
 4. 更新文件列表供 Web 界面使用
-
-📊 **每周检查** (每周日 10:00 自动执行)
-
+- 📊 **每周检查** (每周日 10:00 自动执行)
 1. 根据最新的 Zotero 文献夹重排全部文章
 2. 检查并补充缺失的 AI 生成内容
+   
+#### 测试模式
+
+立即执行一次任务,可修改 `test.py` 底部代码:
+
+```python
+if __name__ == '__main__':
+    args = parse_args()
+    main(args)              # 抓取新论文、排序并生成 AI 摘要
+    # main_week_check(args)   # 重新排序所有论文并补充缺失的 AI 内容
+```
 
 ### 🌐 查看结果
 
@@ -263,33 +228,40 @@ uv run api_server.py --host 0.0.0.0:8080
 
 ```
 Daily_Paper_RSS_AI_Enhance/
-├── ai/                          # AI 增强和排序模块
-│   ├── enhance.py               # 基于 LLM 的论文摘要生成
-│   ├── structure.py             # AI 输出的数据结构
-│   ├── system.txt               # 系统提示词模板
-│   ├── template.txt             # 用户提示词模板
-│   └── zotero_recommender.py    # 基于嵌入向量的 Zotero 排序
-├── fetcher/                     # RSS 抓取模块
-│   └── rss_fetcher.py           # 通用多源 RSS 抓取器
-├── data/                        # 论文数据存储 (JSONL 格式)
-│   └── cache/                   # RSS 缓存、更新日志和收藏数据
-│       ├── favorites.json       # 永久收藏数据
-│       └── favorites_folders.json # 收藏夹文件夹列表
-├── css/                         # 样式表
-│   └── style.css                # 主样式文件
-├── js/                          # JavaScript 脚本
-│   └── app.js                   # 主应用逻辑
-├── index.html                   # 主 Web 界面
-├── api_server.py                # Flask API 服务器(收藏夹持久化)
-├── main.py                      # 主程序入口点(定时任务调度)
-├── logger_config.py             # 日志配置
-├── test.py                      # 测试文件
-├── pyproject.toml               # 项目依赖
-├── uv.lock                      # 依赖锁文件
-├── .gitignore                   # Git 忽略规则
-├── DISCLAIMER.md                # 免责声明
-├── LICENSE                      # AGPL-3.0 许可证
-└── README.md                    # 本文件
+├── .venv/                               # python 虚拟环境
+├── ai/                                  # AI 增强和排序模块
+│   ├── enhance.py                       # 基于 LLM 的论文摘要生成
+│   ├── structure.py                     # AI 输出的数据结构
+│   ├── system.txt                       # 系统提示词模板
+│   ├── template.txt                     # 用户提示词模板
+│   └── zotero_recommender.py            # 基于嵌入向量的 Zotero 排序
+├── fetcher/                             # RSS 抓取模块
+│   └── rss_fetcher.py                   # 通用多源 RSS 抓取器
+├── data/                                # 论文数据存储 (JSONL 格式)
+│   └── cache/                           # RSS 缓存、更新日志和收藏数据
+│       ├── favorites.json               # 永久收藏数据
+│       ├── favorites_folders.json       # 收藏夹文件夹列表
+│       ├── file-list.txt                # 论文数据文件名列表
+│       ├── rss_cache_arxiv.json         # arXiv RSS 缓存
+│       ├── rss_cache_nature.json        # Nature RSS 缓存
+│       ├── update.json                  # 最近更新日志
+│       ├── zotero_corpus_timestamp.txt  # Zotero 文献库抓取时间戳
+│       └── zotero_corpus.pkl            # Zotero 文献库数据缓存
+├── css/                                 # 样式表
+│   └── style.css                        # 主样式文件
+├── js/                                  # JavaScript 脚本
+│   └── app.js                           # 主应用逻辑
+├── index.html                           # 主 Web 界面
+├── api_server.py                        # Flask API 服务器(收藏夹持久化)
+├── main.py                              # 主程序入口点(定时任务调度)
+├── logger_config.py                     # 日志配置
+├── test.py                              # 测试文件
+├── pyproject.toml                       # 项目依赖
+├── uv.lock                              # 依赖锁文件
+├── .gitignore                           # Git 忽略规则
+├── DISCLAIMER.md                        # 免责声明
+├── LICENSE                              # AGPL-3.0 许可证
+└── README.md                            # 本文件
 ```
 
 ---
@@ -592,7 +564,7 @@ AGPL-3.0 确保:
 
 ---
 
-**最后更新**: 2025-11-19
+**最后更新**: 2025-12-01
 
 ---
 
