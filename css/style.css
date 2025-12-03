@@ -249,7 +249,7 @@ body {
 }
 
 .nav-list li i {
-  min-width: 20px;
+  min-width: 23px;
   font-size: 1.25rem;
   background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   background-clip: text;
