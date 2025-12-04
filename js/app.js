@@ -231,47 +231,39 @@ async function loadInitialPapers() {
 
 async function loadFavoritePapers() {
     /**
-     * Load papers that are in favorites but not yet loaded.
-     * This ensures favorited papers from other dates can be displayed.
+     * Load favorited papers from the centralized cache.
+     * This is much faster than searching through individual date files.
      */
-    const favoritePaperIds = new Set();
-    
-    // Collect all favorite paper IDs
-    for (const folder in AppState.favorites) {
-        AppState.favorites[folder].forEach(id => favoritePaperIds.add(id));
-    }
-    
-    if (favoritePaperIds.size === 0) {
-        console.log('No favorite papers to load');
-        return;
-    }
-    
-    // Check which favorite papers are not yet loaded
-    const loadedPaperIds = new Set(AppState.papers.map(p => p.id));
-    const missingFavoriteIds = [...favoritePaperIds].filter(id => !loadedPaperIds.has(id));
-    
-    if (missingFavoriteIds.length === 0) {
-        console.log('All favorite papers already loaded');
-        return;
-    }
-    
-    console.log(`Loading ${missingFavoriteIds.length} favorite papers from other dates`);
-    
-    // Load papers from dates that haven't been loaded yet
-    const datesToLoad = AppState.availableDates.filter(date => !AppState.loadedDates.has(date));
-    
-    for (const date of datesToLoad) {
-        await loadPapersForDates([date]);
-        
-        // Check if we've loaded all missing favorites
-        const stillMissing = missingFavoriteIds.filter(id => 
-            !AppState.papers.some(p => p.id === id)
-        );
-        
-        if (stillMissing.length === 0) {
-            console.log('All favorite papers loaded');
-            break;
+    try {
+        const response = await fetch('/api/favorites/papers');
+        if (response.ok) {
+            const favoritePapers = await response.json();
+            
+            if (favoritePapers.length === 0) {
+                console.log('No favorite papers in cache');
+                return;
+            }
+            
+            console.log(`Loading ${favoritePapers.length} favorite papers from cache`);
+            
+            // Add favorite papers to the global papers list if not already present
+            const loadedPaperIds = new Set(AppState.papers.map(p => p.id));
+            const newFavoritePapers = favoritePapers.filter(paper => !loadedPaperIds.has(paper.id));
+            
+            if (newFavoritePapers.length > 0) {
+                AppState.papers.push(...newFavoritePapers);
+                console.log(`Added ${newFavoritePapers.length} favorite papers from cache`);
+                
+                // Update filter options
+                extractFilterOptions();
+            } else {
+                console.log('All favorite papers already loaded');
+            }
+        } else {
+            console.warn('Failed to load favorite papers from cache');
         }
+    } catch (error) {
+        console.error('Failed to load favorite papers:', error);
     }
 }
 
@@ -1115,6 +1107,8 @@ function displayFavorites() {
                     const collection = paper.collection && paper.collection.length > 0 ? paper.collection[0] : 'Uncategorized';
                     const authors = paper.authors ? paper.authors.slice(0, 3).join(', ') + (paper.authors.length > 3 ? ', et al.' : '') : 'Unknown';
                     const tldr = paper.AI && paper.AI.tldr && paper.AI.tldr !== 'Error' && paper.AI.tldr !== 'Skip' ? paper.AI.tldr : 'No summary available';
+                    const score = paper.score && paper.score.max ? paper.score.max.toFixed(2) : 'N/A';
+                    const fileDate = paper.fileDate || 'Unknown';
                     const source = paper.source || 'unknown';
                     const logoPath = `assets/${source}.png`;
                     
@@ -1124,7 +1118,9 @@ function displayFavorites() {
                                 <i class="fa-solid fa-star"></i>
                             </div>
                             <div class="card-content">
+                                <div class="card-date">${fileDate}</div>
                                 <div class="card-tag">${collection}</div>
+                                <div class="card-score">Score: ${score}</div>
                                 <h2>${paper.title}</h2>
                                 <p class="paper-authors">${authors}</p>
                                 <p class="paper-summary">${tldr}</p>
