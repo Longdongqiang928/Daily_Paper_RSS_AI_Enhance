@@ -12,7 +12,7 @@ def parse_args():
     parser.add_argument(
         '--sources', 
         type=str, 
-        default='arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms+nphys+natrevphys+lsa+natmachintell',
+        default='arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms+nphys+natrevphys+lsa+natmachintell,science:science+sciadv,optica:optica,aps:prl+prx+rmp',
         help='Comma-separated list of RSS sources:categories (e.g., arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton,science:science+sciadv)'
     )
     parser.add_argument(

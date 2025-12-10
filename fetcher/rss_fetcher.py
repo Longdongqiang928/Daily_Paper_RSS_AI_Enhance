@@ -43,7 +43,8 @@ import time
 import xml.etree.ElementTree as ET
 import asyncio
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
-from bs4 import BeautifulSoup
+from fetcher.abstract_extracter import AbstractExtractor
+# from abstract_extracter import AbstractExtractor
 
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -717,7 +718,7 @@ def fill_abstracts(source, papers):
     return filled_papers
 ############# Not Finished yet
 
-def process_source(source: str, categories: str, output_base: str, output_dir: str = "data", cache_dir: str = "data/cache") -> dict:
+def process_source(extractor, source: str, categories: str, output_base: str, output_dir: str = "data", cache_dir: str = "data/cache") -> dict:
     """
     Process a single RSS source.
     
@@ -761,33 +762,33 @@ def process_source(source: str, categories: str, output_base: str, output_dir: s
     if new_papers:
         logger.info(f"[{source}] Found {len(new_papers)} new papers (out of {len(papers)} total)")
         
-        ################## Not Finished yet
-        # # # Extract the abstract by a crawler implemented with crawl4ai
-        # if source != 'arxiv':
-        #     new_papers = fill_abstracts(source, new_papers)
-        ################## Not Finished yet
+        ################# Not Finished yet
+        # # Extract the abstract by a crawler implemented with crawl4ai
+        if source != 'arxiv':
+            new_papers = extractor.extract_abstracts(new_papers, source=source)
+        ################# Not Finished yet
 
-        # Extract the abstract of an official api. Only implement for nature series
-        # Get DOIs of papers with empty summaries
-        dois_to_fetch = []
-        for paper in new_papers:
-            if paper['summary'] == '':
-                # Extract DOI from abs URL for nature papers
-                if 'doi.org/' in paper['abs']:
-                    doi = paper['abs'].split('doi.org/')[-1]
-                    dois_to_fetch.append(doi)
+        # # Extract the abstract of an official api. Only implement for nature series
+        # # Get DOIs of papers with empty summaries
+        # dois_to_fetch = []
+        # for paper in new_papers:
+        #     if paper['summary'] == '':
+        #         # Extract DOI from abs URL for nature papers
+        #         if 'doi.org/' in paper['abs']:
+        #             doi = paper['abs'].split('doi.org/')[-1]
+        #             dois_to_fetch.append(doi)
         
-        if dois_to_fetch:
-            logger.info(f"[{source}] Found {len(dois_to_fetch)} papers with empty summaries")
-            logger.debug(f"[{source}] DOIs to fetch: {dois_to_fetch}")
+        # if dois_to_fetch:
+        #     logger.info(f"[{source}] Found {len(dois_to_fetch)} papers with empty summaries")
+        #     logger.debug(f"[{source}] DOIs to fetch: {dois_to_fetch}")
         
-            if len(dois_to_fetch) == len(new_papers):
-                if source == 'nature':
-                    new_papers =  get_abstract(source, dois_to_fetch)  
-                result['new_papers_with_abs'] = len([p for p in new_papers if p['summary'] != ''])
-                logger.info(f"[{source}] Successfully fetched abstracts for {result['new_papers_with_abs']} out of {len(dois_to_fetch)} papers")
-            else:
-                raise Exception(f"[{source}] Number of new_papers ({len(new_papers)}) does not match number of DOIs need to be fetched ({len(dois_to_fetch)})")
+        #     if len(dois_to_fetch) == len(new_papers):
+        #         if source == 'nature':
+        #             new_papers =  get_abstract(source, dois_to_fetch)  
+        #         result['new_papers_with_abs'] = len([p for p in new_papers if p['summary'] != ''])
+        #         logger.info(f"[{source}] Successfully fetched abstracts for {result['new_papers_with_abs']} out of {len(dois_to_fetch)} papers")
+        #     else:
+        #         raise Exception(f"[{source}] Number of new_papers ({len(new_papers)}) does not match number of DOIs need to be fetched ({len(dois_to_fetch)})")
             
         
         # Append new papers to the output file
@@ -809,7 +810,7 @@ def process_source(source: str, categories: str, output_base: str, output_dir: s
     return result
 
 
-def rss_fetcher_main(output='0000-00-00', output_dir='data', sources='arxiv:physics+quant-ph+cond-mat+nlin,nature:nphoton', ):
+def rss_fetcher_main(output='0000-00-00', output_dir='data', sources='arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms+nphys+natrevphys+lsa+natmachintell,science:science+sciadv,optica:optica,aps:prl+prx+rmp', ):
 
     # Parse comma-separated sources
     sources_categories = [s.strip() for s in sources.split(',')]
@@ -833,10 +834,11 @@ def rss_fetcher_main(output='0000-00-00', output_dir='data', sources='arxiv:phys
     logger.info("="*60)
     
     # Process each source
+    extractor = AbstractExtractor()
     results = []
     for source, category in zip(sources, categories):
         try:
-            result = process_source(source, category, output, output_dir, cache_dir=cache_dir)
+            result = process_source(extractor, source, category, output, output_dir, cache_dir=cache_dir)
             results.append(result)
         except Exception as e:
             logger.error(f"[{source}] Failed to process: {e}", exc_info=True)

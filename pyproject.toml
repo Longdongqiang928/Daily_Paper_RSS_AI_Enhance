@@ -16,5 +16,6 @@ dependencies = [
     "openai>=2.8.1",
     "pyzotero>=1.7.5",
     "schedule>=1.2.2",
+    "tavily-python>=0.7.14",
     "tqdm>=4.67.1",
 ]
