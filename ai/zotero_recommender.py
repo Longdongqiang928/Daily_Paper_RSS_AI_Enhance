@@ -12,6 +12,7 @@ from datetime import timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logger_config import get_logger
+from config import config
 
 logger = get_logger(__name__)
 
@@ -31,13 +32,13 @@ class ZoteroRecommender:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         
         # Initialize OpenAI client
-        self.client = OpenAI(api_key=os.environ.get('NEWAPI_KEY_AD'), base_url=os.environ.get('NEWAPI_BASE_URL'))
+        self.client = OpenAI(api_key=config.NEWAPI_KEY_AD, base_url=config.NEWAPI_BASE_URL)
         
         self.collections = set()
         self.corpus = self.get_zotero_corpus()
         
         logger.info(f"Initialized ZoteroRecommender with model: {embedding_model}")
-        logger.info(f"Using API base URL: {os.environ.get('NEWAPI_BASE_URL')}")
+        logger.info(f"Using API base URL: {config.NEWAPI_BASE_URL}")
         logger.info(f"Cache enabled: {use_cache}")
     
     def get_zotero_corpus(self) -> List[Dict]:
@@ -75,7 +76,7 @@ class ZoteroRecommender:
         
         # Fetch from Zotero API
         logger.info("Fetching Zotero corpus from API")
-        zot = zotero.Zotero(os.environ.get('ZOTERO_ID'), 'user', os.environ.get('ZOTERO_KEY_AD'))
+        zot = zotero.Zotero(config.ZOTERO_ID, 'user', config.ZOTERO_KEY_AD)
         collections = zot.everything(zot.collections())
         collections = {c['key']: c for c in collections}
         
@@ -295,7 +296,7 @@ def zotero_recommender_main(data='0000-00-00', data_dir="data", embedding_model=
     logger.info("Starting Zotero Recommender (Multi-Source, OpenAI-Compatible)")
     logger.info(f"Data pattern: {data}")
     logger.info(f"Embedding model: {embedding_model}")
-    logger.info(f"API base URL: {os.environ.get('NEWAPI_BASE_URL')}")
+    logger.info(f"API base URL: {config.NEWAPI_BASE_URL}")
     logger.info(f"Use cache: {use_cache}")
     logger.info("="*60)
     

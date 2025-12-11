@@ -11,6 +11,7 @@ from langchain_core.prompts import ChatPromptTemplate
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logger_config import get_logger
+from config import config
 
 logger = get_logger(__name__)
 
@@ -35,7 +36,7 @@ class SummaryTranslator:
         self.translation_chain = self._create_translation_chain()
         
         logger.info(f"Initialized SummaryTranslator with model: {model_name}, language: {language}")
-        logger.info(f"Using API base URL: {os.environ.get('NEWAPI_BASE_URL')}")
+        logger.info(f"Using API base URL: {config.NEWAPI_BASE_URL}")
     
     def _create_translation_chain(self):
         """
@@ -49,15 +50,15 @@ class SummaryTranslator:
         if 'deepseek' in self.model_name:
             llm = ChatDeepSeek(
                 model=self.model_name,
-                api_base=os.environ.get('NEWAPI_BASE_URL'),
-                api_key=os.environ.get('NEWAPI_KEY_AD'),
+                api_base=config.NEWAPI_BASE_URL,
+                api_key=config.NEWAPI_KEY_AD,
                 max_tokens=4000
             )
         else:
             llm = ChatOpenAI(
                 model=self.model_name,
-                base_url=os.environ.get('NEWAPI_BASE_URL'),
-                api_key=os.environ.get('NEWAPI_KEY_AD'),
+                base_url=config.NEWAPI_BASE_URL,
+                api_key=config.NEWAPI_KEY_AD,
                 max_tokens=4000
             )
         

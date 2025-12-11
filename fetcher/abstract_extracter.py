@@ -21,6 +21,7 @@ from tavily import TavilyClient
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logger_config import get_logger
+from config import config
 
 logger = get_logger(__name__)
 
@@ -39,7 +40,7 @@ class AbstractExtractor:
         Args:
             tavily_api_key: Tavily API key. If not provided, will try to get from TAVILY_API_KEY env var.
         """
-        self.tavily_api_key = tavily_api_key or os.environ.get("TAVILY_API_KEY")
+        self.tavily_api_key = tavily_api_key or config.TAVILY_API_KEY
         self.tavily_client = None
         if self.tavily_api_key:
             self.tavily_client = TavilyClient(self.tavily_api_key)
@@ -179,7 +180,7 @@ class AbstractExtractor:
         """
         papers = []
         
-        api_key = os.environ.get("NATURE_API_KEY")
+        api_key = config.NATURE_API_KEY
         if not api_key:
             logger.warning(f"[{source}] NATURE_API_KEY not set, skipping Nature API")
             return papers

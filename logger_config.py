@@ -43,6 +43,8 @@ from datetime import datetime
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
+from config import config
+
 
 class LoggerConfig:
     """
@@ -173,6 +175,6 @@ def get_logger(name: str, log_level: str | None = None) -> logging.Logger:
     """
     # Get log level from environment variable or use default
     if log_level is None:
-        log_level = os.environ.get('LOG_LEVEL', 'INFO')
+        log_level = config.LOG_LEVEL
     
     return LoggerConfig.setup_logger(name, log_level=log_level)

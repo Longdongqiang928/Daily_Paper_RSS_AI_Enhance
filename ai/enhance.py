@@ -15,6 +15,7 @@ from ai.structure import Structure
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from logger_config import get_logger
+from config import config
 
 logger = get_logger(__name__)
 
@@ -49,7 +50,7 @@ class AIEnhancer:
         self.chain = self._create_llm_chain()
         
         logger.info(f"Initialized AIEnhancer with model: {model_name}, language: {language}")
-        logger.info(f"Using API base URL: {os.environ.get('NEWAPI_BASE_URL')}")
+        logger.info(f"Using API base URL: {config.NEWAPI_BASE_URL}")
     
     def _create_llm_chain(self):
         """
@@ -62,17 +63,17 @@ class AIEnhancer:
         if 'deepseek' in self.model_name:
             llm = ChatDeepSeek(
                 model=self.model_name,
-                api_base=os.environ.get('NEWAPI_BASE_URL'),
+                api_base=config.NEWAPI_BASE_URL,
                 # base_url=self.base_url,
-                api_key=os.environ.get('NEWAPI_KEY_AD'),
+                api_key=config.NEWAPI_KEY_AD,
                 max_tokens=7000
             ).with_structured_output(Structure)
             logger.info(f"Connected to DeepSeek LLM: {self.model_name}")
         else:
             llm = ChatOpenAI(
                 model=self.model_name,
-                base_url=os.environ.get('NEWAPI_BASE_URL'),
-                api_key=os.environ.get('NEWAPI_KEY_AD'),
+                base_url=config.NEWAPI_BASE_URL,
+                api_key=config.NEWAPI_KEY_AD,
                 max_tokens=7000
             ).with_structured_output(Structure)
             logger.info(f"Connected to OpenAI-compatible LLM: {self.model_name}")

@@ -24,31 +24,26 @@
 - 💾 **本地处理**:所有数据在本地存储和处理,完全可控,仅当使用本地AI时,如果使用线上供应商时部分数据会上传到供应商服务器处理
 - 🌐 **Web 界面**:提供美观的响应式界面,支持搜索、筛选和收藏功能
 
-### ⚠️ 开发状态
-
-**RSS 源限制**: 
-- 目前完全支持的源: **arXiv** 和 **Nature 系列**(通过官方 API)
-- 实验性支持: Science、Optica、APS(网页抓取,稳定性不佳)
+**RSS 源限制 ⚠️持续开发中**: 
+- 目前支持的RSS源: **arXiv**, **Nature 系列**,  **Science 系列**, **Optica**, **APS 系列**
 - 大部分学术期刊的 RSS 不包含摘要,需要额外抓取网页
-- Science 和 APS 网站易受拦截,抓取稳定性极差,本人非cs方向,不知道有什么好的方案,欢迎提出解决方案
+- 当前采用先尝试官方 API 请求,接着通过 tavily 搜索 API 请求(失败后3次重试),数据均为公开数据, 不涉及版权问题
+- Science 和 APS 网站易受拦截,抓取稳定性较差,欢迎提出解决方案
 
 **法律提醒**: 
 本项目仅作学习交流用途,请注意遵守所在地法律法规,尤其是数据爬取相关规定。
 
-这是本人第一次在 GitHub 上传代码,如有不当之处,欢迎指正! 🙏
-
----
-
 ## ✨ 核心功能
 
-### 🎯 本地化处理 (支持本地 AI 提供商如 Ollama)
-- ✅ 所有数据在本地机器上抓取和处理
+### 🎯 数据隐私透明先行 (支持本地 AI 提供商如 Ollama, LM Studio)
+- ✅ 所有数据在本地机器上处理
 - ✅ 无云服务依赖 - 完全掌控你的数据
 - ✅ 基于 JSONL 格式存储,透明且易于迁移
+- ✅ **消费级显卡可运行**:默认配置(qwen3-30b-a3b-instruct-2507、qwen3-Embedding-8B)下, 可在4090(24GB)显卡上本地处理所有数据
 
 ### 🤖 AI 智能增强
 - ✅ 使用兼容 OpenAI 的大语言模型进行结构化摘要
-- ✅ 生成内容:核心要点(TL;DR)、研究动机、研究方法、研究结果、结论
+- ✅ 生成内容:核心要点(TL;DR)、研究动机、研究方法、研究结果、结论、摘要翻译
 - ✅ **高性价比**:借助 Zotero 推荐,仅对相关论文生成 AI 内容
 - ✅ 可配置模型(默认: qwen3-30b-a3b-instruct-2507、deepseek-chat 等)
 - ✅ 支持中英文输出,可在设置页面切换
@@ -62,11 +57,16 @@
 ### 📡 多源 RSS 订阅支持
 - ✅ **arXiv**: 物理学、量子物理、凝聚态物理、非线性科学、AI、CV 等
 - ✅ **Nature 系列**: Nature、Nature Photonics、Nature Physics、Nature Communications 等
+- ✅ **Science 系列**: Science、Science Advances 等
+- ✅ **Optica 系列**: Optica 等
+- ✅ **APS 系列**: Physical Review Letters、Phyical Review X、Review of Modern Physics 等
 - ✅ 可扩展架构,支持添加更多来源
 
 ### 🌐 精美 Web 界面
-- ✅ 按文献夹搜索和筛选
+- ✅ 按文献夹筛选
+- ✅ 按期刊筛选
 - ✅ 日期范围筛选
+- ✅ 关键词匹配搜索
 - ✅ 永久收藏夹系统(支持多文件夹管理)
 - ✅ 收藏数据本地持久化存储
 - ✅ 响应式设计,支持桌面和移动端
@@ -110,6 +110,7 @@
 - **[uv](https://github.com/astral-sh/uv)** 包管理器
 - **OpenAI 兼容 API** 访问权限(或本地 LLM 如 Ollama)
 - **Zotero** 账户及 API 密钥
+- **Tavily** 账户及 API 密钥
 
 ### 📥 安装步骤
 
@@ -129,19 +130,34 @@ uv sync
 
 #### 3. 配置环境变量
 
-在系统环境变量中设置以下内容:
+复制`.env.example`,并重命名为`.env`,在其中配置
 
 ```bash
-# 任何 OpenAI 兼容的提供商(必选), 也可通过New-API网关关联本地LMStudio 
-NEWAPI_KEY_AD=your_api_key
-NEWAPI_BASE_URL=your_base_url
+# API Configuration
+# Base URL for OpenAI-compatible API
+NEWAPI_BASE_URL=https://api.example.com/v1
 
-# Zotero API (必选)
+# API key for AI enhancement and translation
+NEWAPI_KEY_AD=your_api_key_here
+
+# Zotero Configuration
+# Your Zotero user ID (found in Zotero settings -> Feeds/API)
+ZOTERO_ID=your_zotero_id
+
+# Zotero API key (generate at https://www.zotero.org/settings/keys)
 ZOTERO_KEY_AD=your_zotero_api_key
-ZOTERO_ID=your_zotero_user_id
 
-# Nature API (可选,仅当抓取 Nature 论文时需要)
+# Tavily Configuration
+# API key for Tavily web search (get at https://tavily.com)
+TAVILY_API_KEY=your_tavily_api_key
+
+# Nature API Configuration
+# API key for Springer Nature API (get at https://dev.springernature.com)
 NATURE_API_KEY=your_nature_api_key
+
+# Logging Configuration
+# Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL=INFO
 ```
 
 **获取密钥指引:**
@@ -151,29 +167,9 @@ NATURE_API_KEY=your_nature_api_key
 - **Zotero 用户 ID**: 从 [https://www.zotero.org/settings/keys](https://www.zotero.org/settings/keys) 获取
 - **Zotero API 密钥**: 在 [https://www.zotero.org/settings/keys/new](https://www.zotero.org/settings/keys/new) 生成(需要读取权限)
 - **Nature API 密钥**: 在 [Springer Nature API Portal](https://dev.springernature.com/) 申请
+- **Tavily API 密钥**: 在 [Tavily API Platform](https://tavily.com/) 申请
 
-#### 4. 自定义配置
-
-运行 `main.py` 和 `test.py` 时可以自定义以下参数:
-
-```bash
---sources "arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms"
-  # RSS 来源和分类 (例如: arxiv:physics+quant-ph,nature:nature+nphoton)
---model_name "qwen3-30b-a3b-instruct-2507"
-  # 生成 AI 内容的模型名称
---embedding_model "qwen3-embedding-8b"
-  # 生成嵌入向量的模型名称
---language "Chinese"
-  # 输出语言 (Chinese 或 English)
---max_workers 4
-  # 并行工作线程数,增加可加快 AI 处理速度
-```
-
----
-
-## 🎮 使用方法
-
-### 📅 日常运行
+#### 4. 日常运行
 
 ```bash
 uv run main.py
@@ -187,21 +183,8 @@ uv run main.py
 - 📊 **每周检查** (每周日 10:00 自动执行)
 1. 根据最新的 Zotero 文献夹重排全部文章
 2. 检查并补充缺失的 AI 生成内容
-   
-#### 测试模式
 
-立即执行一次任务,可修改 `test.py` 底部代码:
-
-```python
-if __name__ == '__main__':
-    args = parse_args()
-    main(args)              # 抓取新论文、排序并生成 AI 摘要
-    # main_week_check(args)   # 重新排序所有论文并补充缺失的 AI 内容
-```
-
-### 🌐 查看结果
-
-#### 启动 API 服务器(推荐)
+#### 5. 查看结果
 
 为了使用**永久收藏夹**功能,推荐使用内置的 Flask API 服务器:
 
@@ -223,6 +206,38 @@ uv run api_server.py --host 0.0.0.0:8080
 - ✅ 文件夹配置保存在 `data/cache/favorites_folders.json`
 - ✅ 支持跨设备访问(修改 host 为 0.0.0.0)
 - ✅ 数据自动持久化,无需手动保存
+
+#### 6. 自定义配置(可选)
+
+运行 `main.py` 和 `test.py` 时可以自定义以下参数:
+
+```bash
+--sources "arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms"
+  # RSS 来源和分类 (例如: arxiv:physics+quant-ph,nature:nature+nphoton)
+--model_name "qwen3-30b-a3b-instruct-2507"
+  # 生成 AI 内容的模型名称
+--embedding_model "qwen3-embedding-8b"
+  # 生成嵌入向量的模型名称
+--language "Chinese"
+  # 输出语言 (Chinese 或 English)
+--max_workers 4
+  # 并行工作线程数,增加可加快 AI 处理速度
+```
+
+#### 7.测试模式(可选)
+
+立即执行一次任务,可修改 `test.py` 底部代码:
+
+```python
+if __name__ == '__main__':
+    args = parse_args()
+    main(args)              # 抓取新论文、排序并生成 AI 摘要
+    # main_week_check(args)   # 重新排序所有论文并补充缺失的 AI 内容
+```
+
+
+---
+
 
 ## 📁 项目结构
 
@@ -272,19 +287,10 @@ Daily_Paper_RSS_AI_Enhance/
 
 目前支持的 RSS 源:
 - ✅ **arXiv**: 完全支持,包含摘要
-- ✅ **Nature 系列**: 通过官方 API 支持,包含摘要
-- ⚠️ **Science**: 实验性支持,易受拦截,稳定性较差
-- ⚠️ **Optica**: 实验性支持,网页抓取可用
-- ⚠️ **APS (Physical Review)**: 实验性支持,易受拦截,稳定性较差
-- **注意**: 实验性支持项目需要将fetcher/rss_fetcher.py中的对应代码取消注释以启用，具体使用方法参阅[crawl4ai](https://github.com/unclecode/crawl4ai)
-```python
-# 766-770
-################## Not Finished yet
-# # # Extract the abstract by a crawler implemented with crawl4ai
-# if source != 'arxiv':
-#     new_papers = fill_abstracts(source, new_papers)
-################## Not Finished yet
-```
+- ✅ **Nature 系列**: RSS源可获取,摘要通过官方 API 支持,较稳定
+- ⚠️ **Science**: RSS源可获取,摘要通过 tavily API 支持,易受拦截,稳定性较差
+- ⚠️ **Optica**: RSS源可获取,摘要通过 tavily API 支持,易受拦截,稳定性较差
+- ⚠️ **APS (Physical Review)**: RSS源可获取,摘要通过tavily API支持,易受拦截,稳定性较差
 
 
 修改 `main.py` 中的 `--sources` 参数:
@@ -454,7 +460,8 @@ schedule.every().sunday.at("10:00").do(main_week_check, args=args).tag('weekly-t
     "motivation": "研究动机...",
     "method": "研究方法...",
     "result": "研究结果...",
-    "conclusion": "结论..."
+    "conclusion": "结论...",
+    "summary_translated": "原文摘要翻译...",
   }
 }
 ```
@@ -479,19 +486,18 @@ schedule.every().sunday.at("10:00").do(main_week_check, args=args).tag('weekly-t
 ## 📋 待办事项 (TODO)
 
 - [ ] **改进稳定性**: 解决 Science 和 APS 被拦截的问题
-- [ ] **添加更多 RSS 源**: PNAS、Physical Review Letters、JACS 等
+- [x] **添加更多 RSS 源**: PNAS、Physical Review Letters、JACS 等
 - [x] **网页性能优化**: 目前首次打开网页会默认加载所有文章,等待时间较长
 - [x] **zotero请求优化**: 每周检查时会多次重复请求zotero,需建立缓存机制,每周检查时只请求一次而每日更新不受影响
 - [ ] **添加数据分析页面**: 论文趋势分析和可视化
 - [ ] **AI联动**: 在详情页增加ai助手快速入口,提问论文内容
-- [ ] **Obsidian联动**: 将论文内容导入obsidian
+- [ ] **Obsidian联动**: 将论文内容转换为md文件,并导入obsidian
 
 ---
 
 ## 🐛 已知问题
 
 - **稳定性**: Science 和 APS 网站会被拦截,抓取成功率不稳定
-- **RSS 源限制**: 大部分学术期刊的 RSS 不包含摘要,需要额外抓取
 
 ---
 
@@ -534,16 +540,14 @@ AGPL-3.0 确保:
 - [langchain-openai](https://github.com/langchain-ai/langchain) - OpenAI LLM 集成
 - [langchain-deepseek](https://github.com/langchain-ai/langchain-deepseek) - DeepSeek LLM 集成
 - [OpenAI Python SDK](https://github.com/openai/openai-python) - API 客户端
-- [sentence-transformers](https://github.com/UKPLab/sentence-transformers) - 嵌入向量模型
-- [PyTorch](https://pytorch.org/) - 机器学习框架
 - [Flask](https://github.com/pallets/flask) - Web 框架(用于 API 服务器)
 - [Flask-CORS](https://github.com/corydolphin/flask-cors) - Flask 跨域资源共享支持
 - [requests](https://github.com/psf/requests) - HTTP 库
 - [beautifulsoup4](https://www.crummy.com/software/BeautifulSoup/) - HTML 解析库
 - [numpy](https://github.com/numpy/numpy) - 数值计算库
-- [crawl4ai](https://github.com/unclecode/crawl4ai) - 爬虫工具(实验性)
 - [schedule](https://github.com/dbader/schedule) - 定时任务调度库
 - [tqdm](https://github.com/tqdm/tqdm) - 进度条库
+- [tavaly-python](https://github.com/tavily-ai/tavily-python) - Tavily 搜索 API 的 python 集成(用于获取公开摘要数据)
 
 ### AI 网关
 
@@ -564,7 +568,7 @@ AGPL-3.0 确保:
 
 ---
 
-**最后更新**: 2025-12-01
+**最后更新**: 2025-12-11
 
 ---
 
