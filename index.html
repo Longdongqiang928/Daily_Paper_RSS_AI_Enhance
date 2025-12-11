@@ -95,13 +95,83 @@
             <!-- Analytics Page -->
             <div id="analytics-page" class="page-content">
                 <header class="page-header">
-                    <h1>Analytics</h1>
-                    <p class="subtitle">Coming soon</p>
+                    <h1>Research Analytics</h1>
+                    <p class="subtitle">Insights from your paper collection</p>
                 </header>
-                <div class="coming-soon">
-                    <i class="fa-solid fa-chart-line"></i>
-                    <h2>Under Construction</h2>
-                    <p>Analytics features are being developed</p>
+                <div id="analytics-date-info" class="analytics-date-info"></div>
+                <div id="analytics-container" class="analytics-container">
+                    <!-- Section 1: Overview Stats -->
+                    <div class="analytics-section">
+                        <div class="analytics-stats-grid" id="analytics-overview"></div>
+                    </div>
+
+                    <!-- Section 2: Research Hotspots -->
+                    <div class="analytics-section">
+                        <div class="section-header">
+                            <i class="fa-solid fa-fire"></i>
+                            <h3>Research Hotspots</h3>
+                        </div>
+                        <div class="analytics-row">
+                            <div class="analytics-card" id="trending-categories"></div>
+                            <div class="analytics-card" id="collections-radar"></div>
+                        </div>
+                        <div class="analytics-row">
+                            <div class="analytics-card wide" id="keyword-cloud"></div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: High Relevance Insights -->
+                    <div class="analytics-section">
+                        <div class="section-header">
+                            <i class="fa-solid fa-star"></i>
+                            <h3>High-Relevance Papers</h3>
+                        </div>
+                        <div class="analytics-row">
+                            <div class="analytics-card wide" id="top-papers"></div>
+                        </div>
+                        <div class="analytics-row">
+                            <div class="analytics-card" id="score-distribution"></div>
+                            <div class="analytics-card" id="score-threshold"></div>
+                        </div>
+                    </div>
+
+                    <!-- Section 4: Source Analysis -->
+                    <div class="analytics-section">
+                        <div class="section-header">
+                            <i class="fa-solid fa-book"></i>
+                            <h3>Journal & Source Analysis</h3>
+                        </div>
+                        <div class="analytics-row">
+                            <div class="analytics-card" id="papers-by-source"></div>
+                            <div class="analytics-card" id="source-score-comparison"></div>
+                        </div>
+                    </div>
+
+                    <!-- Section 5: Author Insights -->
+                    <div class="analytics-section">
+                        <div class="section-header">
+                            <i class="fa-solid fa-users"></i>
+                            <h3>Author Insights</h3>
+                        </div>
+                        <div class="analytics-row">
+                            <div class="analytics-card wide" id="top-authors"></div>
+                        </div>
+                    </div>
+
+                    <!-- Section 6: AI Quality Metrics -->
+                    <div class="analytics-section">
+                        <div class="section-header">
+                            <i class="fa-solid fa-robot"></i>
+                            <h3>AI Summary Quality</h3>
+                        </div>
+                        <div class="analytics-row">
+                            <div class="analytics-card" id="ai-success-rate"></div>
+                            <div class="analytics-card" id="ai-field-completion"></div>
+                        </div>
+                        <div class="analytics-row">
+                            <div class="analytics-card wide" id="ai-by-source"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

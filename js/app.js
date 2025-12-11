@@ -1211,6 +1211,8 @@ function navigateTo(page) {
             displayFavorites();
         } else if (page === 'settings') {
             loadSettingsPage();
+        } else if (page === 'analytics') {
+            displayAnalytics();
         }
     }
 }
@@ -1256,6 +1258,867 @@ function scrollToTop() {
         top: 0,
         behavior: 'smooth'
     });
+}
+
+// ============================================
+// Analytics Functions
+// ============================================
+
+function getAnalyticsPapers() {
+    /**
+     * Get papers for analytics based on current date selection from papers page.
+     * Uses the same date filter as the papers page for consistency.
+     */
+    let papers = AppState.papers;
+    
+    // Apply the same date filter as the papers page
+    if (AppState.selectedDates.size > 0) {
+        papers = papers.filter(paper => 
+            AppState.selectedDates.has(paper.fileDate)
+        );
+    }
+    
+    return papers;
+}
+
+function computeAnalyticsData(papers) {
+    /**
+     * Compute all analytics metrics from the given papers.
+     */
+    const analytics = {
+        overview: {
+            totalPapers: papers.length,
+            uniqueJournals: new Set(papers.map(p => p.journal).filter(Boolean)).size,
+            uniqueCollections: new Set(papers.flatMap(p => p.collection || [])).size,
+            avgScore: 0,
+            highScorePapers: 0
+        },
+        categories: {},
+        collections: {},
+        sources: {},
+        journals: {},
+        authors: {},
+        scores: [],
+        ai: {
+            success: 0,
+            skip: 0,
+            error: 0,
+            translated: 0,
+            fields: {
+                tldr: { filled: 0, empty: 0 },
+                motivation: { filled: 0, empty: 0 },
+                method: { filled: 0, empty: 0 },
+                result: { filled: 0, empty: 0 },
+                conclusion: { filled: 0, empty: 0 },
+                summary_translated: { filled: 0, empty: 0 }
+            },
+            bySource: {}
+        },
+        topPapers: []
+    };
+    
+    let totalScore = 0;
+    let scoredPapers = 0;
+    
+    papers.forEach(paper => {
+        // Categories (from arXiv category field)
+        if (paper.category && Array.isArray(paper.category)) {
+            paper.category.forEach(cat => {
+                analytics.categories[cat] = (analytics.categories[cat] || 0) + 1;
+            });
+        }
+        
+        // Collections (from Zotero matching)
+        if (paper.collection && Array.isArray(paper.collection)) {
+            paper.collection.forEach(col => {
+                analytics.collections[col] = (analytics.collections[col] || 0) + 1;
+            });
+        }
+        
+        // Sources
+        const source = paper.source || 'unknown';
+        analytics.sources[source] = (analytics.sources[source] || 0) + 1;
+        
+        // Journals
+        if (paper.journal) {
+            analytics.journals[paper.journal] = (analytics.journals[paper.journal] || 0) + 1;
+        }
+        
+        // Authors
+        if (paper.authors && Array.isArray(paper.authors)) {
+            paper.authors.forEach(author => {
+                if (author && author.trim()) {
+                    analytics.authors[author] = (analytics.authors[author] || 0) + 1;
+                }
+            });
+        }
+        
+        // Scores
+        if (paper.score && paper.score.max !== undefined) {
+            analytics.scores.push(paper.score.max);
+            totalScore += paper.score.max;
+            scoredPapers++;
+            if (paper.score.max >= 5.0) {
+                analytics.overview.highScorePapers++;
+            }
+        }
+        
+        // AI metrics
+        const aiStatus = getAIStatus(paper);
+        analytics.ai[aiStatus]++;
+        
+        // Track by source
+        if (!analytics.ai.bySource[source]) {
+            analytics.ai.bySource[source] = { success: 0, skip: 0, error: 0, total: 0 };
+        }
+        analytics.ai.bySource[source][aiStatus]++;
+        analytics.ai.bySource[source].total++;
+        
+        // AI field completion
+        if (paper.AI) {
+            ['tldr', 'motivation', 'method', 'result', 'conclusion', 'summary_translated'].forEach(field => {
+                if (paper.AI[field] && paper.AI[field] !== 'Error' && paper.AI[field] !== 'Skip' && paper.AI[field].trim()) {
+                    analytics.ai.fields[field].filled++;
+                } else {
+                    analytics.ai.fields[field].empty++;
+                }
+            });
+            
+            if (paper.AI.summary_translated && paper.AI.summary_translated.trim()) {
+                analytics.ai.translated++;
+            }
+        } else {
+            Object.keys(analytics.ai.fields).forEach(field => {
+                analytics.ai.fields[field].empty++;
+            });
+        }
+    });
+    
+    // Calculate average score
+    analytics.overview.avgScore = scoredPapers > 0 ? (totalScore / scoredPapers).toFixed(2) : 0;
+    
+    // Get top 10 papers by score
+    analytics.topPapers = [...papers]
+        .filter(p => p.score && p.score.max !== undefined)
+        .sort((a, b) => b.score.max - a.score.max)
+        .slice(0, 10);
+    
+    return analytics;
+}
+
+function getAIStatus(paper) {
+    if (!paper.AI) return 'skip';
+    if (paper.AI.tldr === 'Error') return 'error';
+    if (paper.AI.tldr === 'Skip') return 'skip';
+    if (paper.AI.tldr && paper.AI.tldr.trim()) return 'success';
+    return 'skip';
+}
+
+function displayAnalytics() {
+    const papers = getAnalyticsPapers();
+    const analytics = computeAnalyticsData(papers);
+    
+    // Display date info
+    displayAnalyticsDateInfo();
+    
+    // Display all sections
+    displayAnalyticsOverview(analytics);
+    displayTrendingCategories(analytics);
+    displayCollectionsRadar(analytics);
+    displayKeywordCloud(papers);
+    displayTopPapers(analytics);
+    displayScoreDistribution(analytics);
+    displayScoreThreshold(analytics);
+    displayPapersBySource(analytics);
+    displaySourceScoreComparison(analytics, papers);
+    displayTopAuthors(analytics);
+    displayAISuccessRate(analytics);
+    displayAIFieldCompletion(analytics);
+    displayAIBySource(analytics);
+}
+
+function displayAnalyticsDateInfo() {
+    const container = document.getElementById('analytics-date-info');
+    if (!container) return;
+    
+    let dateText = 'All available data';
+    if (AppState.selectedDates.size > 0) {
+        const dates = Array.from(AppState.selectedDates).sort();
+        if (dates.length === 1) {
+            dateText = `Data for ${dates[0]}`;
+        } else {
+            dateText = `Data from ${dates[0]} to ${dates[dates.length - 1]} (${dates.length} days)`;
+        }
+    }
+    
+    container.innerHTML = `
+        <div class="date-info-banner">
+            <i class="fa-solid fa-calendar-days"></i>
+            <span>${dateText}</span>
+            <span class="date-hint">(Synced with Papers page date selection)</span>
+        </div>
+    `;
+}
+
+function displayAnalyticsOverview(analytics) {
+    const container = document.getElementById('analytics-overview');
+    if (!container) return;
+    
+    const successRate = analytics.overview.totalPapers > 0 
+        ? ((analytics.ai.success / analytics.overview.totalPapers) * 100).toFixed(1) 
+        : 0;
+    
+    container.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-file-lines"></i></div>
+            <div class="stat-content">
+                <div class="stat-value">${analytics.overview.totalPapers}</div>
+                <div class="stat-label">Total Papers</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="stat-content">
+                <div class="stat-value">${analytics.overview.avgScore}</div>
+                <div class="stat-label">Avg. Score</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-star"></i></div>
+            <div class="stat-content">
+                <div class="stat-value">${analytics.overview.highScorePapers}</div>
+                <div class="stat-label">High Score (≥5.0)</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-robot"></i></div>
+            <div class="stat-content">
+                <div class="stat-value">${successRate}%</div>
+                <div class="stat-label">AI Success Rate</div>
+            </div>
+        </div>
+    `;
+}
+
+function displayTrendingCategories(analytics) {
+    const container = document.getElementById('trending-categories');
+    if (!container) return;
+    
+    // Combine categories and collections for trending
+    const allTopics = { ...analytics.categories };
+    Object.entries(analytics.collections).forEach(([col, count]) => {
+        allTopics[col] = (allTopics[col] || 0) + count;
+    });
+    
+    const sorted = Object.entries(allTopics)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+    
+    const maxCount = sorted.length > 0 ? sorted[0][1] : 1;
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-fire"></i>
+            <h4>Trending Topics</h4>
+        </div>
+        <div class="trending-list">
+    `;
+    
+    sorted.forEach(([topic, count], index) => {
+        const percentage = (count / maxCount) * 100;
+        html += `
+            <div class="trending-item">
+                <span class="trending-rank">${index + 1}</span>
+                <span class="trending-name">${topic}</span>
+                <div class="trending-bar-container">
+                    <div class="trending-bar" style="width: ${percentage}%"></div>
+                </div>
+                <span class="trending-count">${count}</span>
+            </div>
+        `;
+    });
+    
+    if (sorted.length === 0) {
+        html += '<div class="no-data">No category data available</div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function displayCollectionsRadar(analytics) {
+    const container = document.getElementById('collections-radar');
+    if (!container) return;
+    
+    const sorted = Object.entries(analytics.collections)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+    
+    const total = sorted.reduce((sum, [, count]) => sum + count, 0);
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-layer-group"></i>
+            <h4>Collection Distribution</h4>
+        </div>
+        <div class="collection-list">
+    `;
+    
+    sorted.forEach(([collection, count]) => {
+        const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+        html += `
+            <div class="collection-item">
+                <div class="collection-info">
+                    <span class="collection-name">${collection}</span>
+                    <span class="collection-stats">${count} papers (${percentage}%)</span>
+                </div>
+                <div class="collection-bar-container">
+                    <div class="collection-bar" style="width: ${percentage}%"></div>
+                </div>
+            </div>
+        `;
+    });
+    
+    if (sorted.length === 0) {
+        html += '<div class="no-data">No collection data available</div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function extractKeywords(papers) {
+    /**
+     * Extract keywords from paper titles, abstracts (summary), and AI-generated TL;DRs.
+     * Filters out common stop words and returns word frequency map.
+     */
+    const stopWords = new Set([
+        // English stop words
+        'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+        'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been',
+        'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+        'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need',
+        'it', 'its', 'this', 'that', 'these', 'those', 'i', 'we', 'you',
+        'he', 'she', 'they', 'what', 'which', 'who', 'whom', 'when', 'where',
+        'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most',
+        'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same',
+        'so', 'than', 'too', 'very', 'just', 'also', 'now', 'here', 'there',
+        'into', 'over', 'after', 'before', 'between', 'under', 'again',
+        'further', 'then', 'once', 'during', 'while', 'about', 'against',
+        'above', 'below', 'up', 'down', 'out', 'off', 'through', 'any',
+        'our', 'their', 'your', 'his', 'her', 'if', 'because', 'until',
+        'being', 'having', 'doing', 'using', 'based', 'via', 'per', 'however',
+        'show', 'shows', 'shown', 'showing', 'use', 'uses', 'used', 'using',
+        'new', 'paper', 'papers', 'study', 'studies', 'work', 'works',
+        'propose', 'proposed', 'proposes', 'present', 'presents', 'presented',
+        'approach', 'method', 'methods', 'result', 'results', 'demonstrate',
+        'demonstrates', 'demonstrated', 'provide', 'provides', 'provided',
+        'develop', 'develops', 'developed', 'achieve', 'achieves', 'achieved',
+        'improve', 'improves', 'improved', 'compared', 'existing', 'different',
+        'first', 'two', 'three', 'one', 'well', 'high', 'low', 'large', 'small',
+        'can', 'et', 'al', 'etc', 'e.g', 'i.e', 'arxiv', 'abstract',
+        'here', 'find', 'found', 'report', 'reports', 'reported', 'discuss',
+        'discusses', 'discussed', 'consider', 'considers', 'considered',
+        'investigate', 'investigates', 'investigated', 'analysis', 'analyze',
+        'analyzes', 'analyzed', 'introduce', 'introduces', 'introduced',
+        'show', 'shows', 'showed', 'establish', 'establishes', 'established',
+        'describe', 'describes', 'described', 'determine', 'determines',
+        'determined', 'suggest', 'suggests', 'suggested', 'reveal', 'reveals',
+        'revealed', 'indicate', 'indicates', 'indicated', 'explore', 'explores',
+        'explored', 'obtain', 'obtains', 'obtained', 'allow', 'allows', 'allowed',
+        'enable', 'enables', 'enabled', 'require', 'requires', 'required'
+    ]);
+    
+    const wordFreq = {};
+    
+    papers.forEach(paper => {
+        // Extract from title
+        const title = paper.title || '';
+        
+        // Extract from abstract/summary if available
+        const summary = (paper.summary && 
+                        paper.summary !== 'No Summary Available' &&
+                        paper.summary.trim()) ? paper.summary : '';
+        
+        // Extract from TL;DR if available
+        const tldr = (paper.AI && paper.AI.tldr && 
+                     paper.AI.tldr !== 'Error' && 
+                     paper.AI.tldr !== 'Skip') ? paper.AI.tldr : '';
+        
+        // Combine text sources (title, abstract, and TL;DR)
+        const text = `${title} ${summary} ${tldr}`.toLowerCase();
+        
+        // Extract words (alphanumeric, allowing hyphens for compound terms)
+        const words = text.match(/[a-z][a-z0-9-]*[a-z0-9]/g) || [];
+        
+        words.forEach(word => {
+            // Skip stop words and very short words
+            if (word.length < 3 || stopWords.has(word)) return;
+            // Skip words that are just numbers
+            if (/^\d+$/.test(word)) return;
+            
+            wordFreq[word] = (wordFreq[word] || 0) + 1;
+        });
+    });
+    
+    // Sort by frequency and take top words
+    const sorted = Object.entries(wordFreq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 60);
+    
+    return sorted;
+}
+
+function displayKeywordCloud(papers) {
+    const container = document.getElementById('keyword-cloud');
+    if (!container) return;
+    
+    const keywords = extractKeywords(papers);
+    
+    if (keywords.length === 0) {
+        container.innerHTML = `
+            <div class="card-header">
+                <i class="fa-solid fa-cloud"></i>
+                <h4>Research Keywords</h4>
+            </div>
+            <div class="no-data">No keyword data available</div>
+        `;
+        return;
+    }
+    
+    const maxFreq = keywords[0][1];
+    const minFreq = keywords[keywords.length - 1][1];
+    
+    // Shuffle keywords for more natural cloud appearance
+    const shuffled = [...keywords].sort(() => Math.random() - 0.5);
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-cloud"></i>
+            <h4>Research Keywords</h4>
+            <span class="keyword-count">${keywords.length} keywords from ${papers.length} papers</span>
+        </div>
+        <div class="word-cloud">
+    `;
+    
+    shuffled.forEach(([word, count]) => {
+        // Calculate font size based on frequency (scale from 0.7 to 2.2)
+        const normalized = maxFreq === minFreq ? 0.5 : 
+            (count - minFreq) / (maxFreq - minFreq);
+        const fontSize = 0.75 + (normalized * 1.5);
+        
+        // Calculate opacity based on frequency
+        const opacity = 0.6 + (normalized * 0.4);
+        
+        // Assign color class based on frequency tier
+        let colorClass = 'keyword-low';
+        if (normalized > 0.7) colorClass = 'keyword-high';
+        else if (normalized > 0.4) colorClass = 'keyword-medium';
+        
+        html += `
+            <span class="cloud-word ${colorClass}" 
+                  style="font-size: ${fontSize}rem; opacity: ${opacity}"
+                  title="${word}: ${count} occurrences">
+                ${word}
+            </span>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function displayTopPapers(analytics) {
+    const container = document.getElementById('top-papers');
+    if (!container) return;
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-trophy"></i>
+            <h4>Top Scoring Papers</h4>
+        </div>
+        <div class="top-papers-table">
+            <div class="table-header">
+                <span class="col-score">Score</span>
+                <span class="col-title">Title</span>
+                <span class="col-collection">Collection</span>
+                <span class="col-source">Source</span>
+            </div>
+    `;
+    
+    analytics.topPapers.forEach(paper => {
+        const score = paper.score.max.toFixed(2);
+        const collection = paper.collection && paper.collection[0] ? paper.collection[0] : 'N/A';
+        const source = paper.source || 'unknown';
+        const truncatedTitle = paper.title.length > 80 ? paper.title.substring(0, 80) + '...' : paper.title;
+        
+        html += `
+            <div class="table-row" onclick="showPaperDetails('${paper.id}')">
+                <span class="col-score score-badge">${score}</span>
+                <span class="col-title" title="${paper.title}">${truncatedTitle}</span>
+                <span class="col-collection">${collection}</span>
+                <span class="col-source">${source}</span>
+            </div>
+        `;
+    });
+    
+    if (analytics.topPapers.length === 0) {
+        html += '<div class="no-data">No scored papers available</div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function displayScoreDistribution(analytics) {
+    const container = document.getElementById('score-distribution');
+    if (!container) return;
+    
+    // Create histogram buckets
+    const buckets = {
+        '0-2': 0,
+        '2-3': 0,
+        '3-4': 0,
+        '4-5': 0,
+        '5-6': 0,
+        '6-7': 0,
+        '7+': 0
+    };
+    
+    analytics.scores.forEach(score => {
+        if (score < 2) buckets['0-2']++;
+        else if (score < 3) buckets['2-3']++;
+        else if (score < 4) buckets['3-4']++;
+        else if (score < 5) buckets['4-5']++;
+        else if (score < 6) buckets['5-6']++;
+        else if (score < 7) buckets['6-7']++;
+        else buckets['7+']++;
+    });
+    
+    const maxCount = Math.max(...Object.values(buckets), 1);
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-chart-bar"></i>
+            <h4>Score Distribution</h4>
+        </div>
+        <div class="histogram">
+    `;
+    
+    Object.entries(buckets).forEach(([range, count]) => {
+        const height = (count / maxCount) * 100;
+        html += `
+            <div class="histogram-bar-container">
+                <div class="histogram-bar" style="height: ${height}%">
+                    <span class="histogram-count">${count}</span>
+                </div>
+                <span class="histogram-label">${range}</span>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function displayScoreThreshold(analytics) {
+    const container = document.getElementById('score-threshold');
+    if (!container) return;
+    
+    const total = analytics.scores.length || 1;
+    const thresholds = [
+        { label: 'Score ≥ 7.0', count: analytics.scores.filter(s => s >= 7).length },
+        { label: 'Score ≥ 6.0', count: analytics.scores.filter(s => s >= 6).length },
+        { label: 'Score ≥ 5.0', count: analytics.scores.filter(s => s >= 5).length },
+        { label: 'Score ≥ 4.0', count: analytics.scores.filter(s => s >= 4).length },
+        { label: 'Score ≥ 3.0', count: analytics.scores.filter(s => s >= 3).length }
+    ];
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-filter"></i>
+            <h4>Score Threshold Analysis</h4>
+        </div>
+        <div class="threshold-list">
+    `;
+    
+    thresholds.forEach(({ label, count }) => {
+        const percentage = ((count / total) * 100).toFixed(1);
+        html += `
+            <div class="threshold-item">
+                <span class="threshold-label">${label}</span>
+                <div class="threshold-bar-container">
+                    <div class="threshold-bar" style="width: ${percentage}%"></div>
+                </div>
+                <span class="threshold-value">${count} (${percentage}%)</span>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function displayPapersBySource(analytics) {
+    const container = document.getElementById('papers-by-source');
+    if (!container) return;
+    
+    const sorted = Object.entries(analytics.sources)
+        .sort((a, b) => b[1] - a[1]);
+    
+    const total = sorted.reduce((sum, [, count]) => sum + count, 0);
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-database"></i>
+            <h4>Papers by Source</h4>
+        </div>
+        <div class="source-list">
+    `;
+    
+    sorted.forEach(([source, count]) => {
+        const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+        html += `
+            <div class="source-item">
+                <div class="source-info">
+                    <img src="assets/${source}.png" alt="${source}" class="source-logo" onerror="this.style.display='none'">
+                    <span class="source-name">${source.toUpperCase()}</span>
+                </div>
+                <div class="source-bar-container">
+                    <div class="source-bar" style="width: ${percentage}%"></div>
+                </div>
+                <span class="source-count">${count}</span>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function displaySourceScoreComparison(analytics, papers) {
+    const container = document.getElementById('source-score-comparison');
+    if (!container) return;
+    
+    // Calculate average score per source
+    const sourceScores = {};
+    papers.forEach(paper => {
+        const source = paper.source || 'unknown';
+        if (paper.score && paper.score.max !== undefined) {
+            if (!sourceScores[source]) {
+                sourceScores[source] = { total: 0, count: 0 };
+            }
+            sourceScores[source].total += paper.score.max;
+            sourceScores[source].count++;
+        }
+    });
+    
+    const avgScores = Object.entries(sourceScores)
+        .map(([source, data]) => ({
+            source,
+            avg: data.count > 0 ? (data.total / data.count).toFixed(2) : 0,
+            count: data.count
+        }))
+        .sort((a, b) => b.avg - a.avg);
+    
+    const maxAvg = avgScores.length > 0 ? Math.max(...avgScores.map(s => s.avg)) : 1;
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-scale-balanced"></i>
+            <h4>Avg. Score by Source</h4>
+        </div>
+        <div class="score-comparison-list">
+    `;
+    
+    avgScores.forEach(({ source, avg, count }) => {
+        const width = (avg / maxAvg) * 100;
+        html += `
+            <div class="score-comparison-item">
+                <span class="comparison-source">${source.toUpperCase()}</span>
+                <div class="comparison-bar-container">
+                    <div class="comparison-bar" style="width: ${width}%"></div>
+                </div>
+                <span class="comparison-score">${avg}</span>
+            </div>
+        `;
+    });
+    
+    if (avgScores.length === 0) {
+        html += '<div class="no-data">No score data available</div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function displayTopAuthors(analytics) {
+    const container = document.getElementById('top-authors');
+    if (!container) return;
+    
+    const sorted = Object.entries(analytics.authors)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15);
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-user-graduate"></i>
+            <h4>Most Active Authors</h4>
+        </div>
+        <div class="authors-grid">
+    `;
+    
+    sorted.forEach(([author, count], index) => {
+        html += `
+            <div class="author-chip">
+                <span class="author-rank">${index + 1}</span>
+                <span class="author-name">${author}</span>
+                <span class="author-count">${count} papers</span>
+            </div>
+        `;
+    });
+    
+    if (sorted.length === 0) {
+        html += '<div class="no-data">No author data available</div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function displayAISuccessRate(analytics) {
+    const container = document.getElementById('ai-success-rate');
+    if (!container) return;
+    
+    const total = analytics.ai.success + analytics.ai.skip + analytics.ai.error;
+    const successRate = total > 0 ? ((analytics.ai.success / total) * 100).toFixed(1) : 0;
+    const skipRate = total > 0 ? ((analytics.ai.skip / total) * 100).toFixed(1) : 0;
+    const errorRate = total > 0 ? ((analytics.ai.error / total) * 100).toFixed(1) : 0;
+    const translationRate = total > 0 ? ((analytics.ai.translated / total) * 100).toFixed(1) : 0;
+    
+    container.innerHTML = `
+        <div class="card-header">
+            <i class="fa-solid fa-circle-check"></i>
+            <h4>AI Processing Status</h4>
+        </div>
+        <div class="ai-status-grid">
+            <div class="ai-status-item success">
+                <i class="fa-solid fa-check"></i>
+                <span class="status-value">${analytics.ai.success}</span>
+                <span class="status-label">Success (${successRate}%)</span>
+            </div>
+            <div class="ai-status-item skip">
+                <i class="fa-solid fa-forward"></i>
+                <span class="status-value">${analytics.ai.skip}</span>
+                <span class="status-label">Skipped (${skipRate}%)</span>
+            </div>
+            <div class="ai-status-item error">
+                <i class="fa-solid fa-xmark"></i>
+                <span class="status-value">${analytics.ai.error}</span>
+                <span class="status-label">Errors (${errorRate}%)</span>
+            </div>
+            <div class="ai-status-item translated">
+                <i class="fa-solid fa-language"></i>
+                <span class="status-value">${analytics.ai.translated}</span>
+                <span class="status-label">Translated (${translationRate}%)</span>
+            </div>
+        </div>
+        <div class="ai-progress-bar">
+            <div class="progress-success" style="width: ${successRate}%"></div>
+            <div class="progress-skip" style="width: ${skipRate}%"></div>
+            <div class="progress-error" style="width: ${errorRate}%"></div>
+        </div>
+    `;
+}
+
+function displayAIFieldCompletion(analytics) {
+    const container = document.getElementById('ai-field-completion');
+    if (!container) return;
+    
+    const fields = [
+        { key: 'tldr', label: 'TL;DR' },
+        { key: 'motivation', label: 'Motivation' },
+        { key: 'method', label: 'Method' },
+        { key: 'result', label: 'Result' },
+        { key: 'conclusion', label: 'Conclusion' },
+        { key: 'summary_translated', label: 'Translation' }
+    ];
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-list-check"></i>
+            <h4>AI Field Completion</h4>
+        </div>
+        <div class="field-completion-list">
+    `;
+    
+    fields.forEach(({ key, label }) => {
+        const data = analytics.ai.fields[key];
+        const total = data.filled + data.empty;
+        const rate = total > 0 ? ((data.filled / total) * 100).toFixed(1) : 0;
+        
+        html += `
+            <div class="field-completion-item">
+                <span class="field-label">${label}</span>
+                <div class="field-bar-container">
+                    <div class="field-bar" style="width: ${rate}%"></div>
+                </div>
+                <span class="field-rate">${rate}%</span>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function displayAIBySource(analytics) {
+    const container = document.getElementById('ai-by-source');
+    if (!container) return;
+    
+    let html = `
+        <div class="card-header">
+            <i class="fa-solid fa-table"></i>
+            <h4>AI Success Rate by Source</h4>
+        </div>
+        <div class="ai-source-table">
+            <div class="table-header">
+                <span class="col-source">Source</span>
+                <span class="col-total">Total</span>
+                <span class="col-success">Success</span>
+                <span class="col-skip">Skip</span>
+                <span class="col-error">Error</span>
+                <span class="col-rate">Success Rate</span>
+            </div>
+    `;
+    
+    Object.entries(analytics.ai.bySource)
+        .sort((a, b) => b[1].total - a[1].total)
+        .forEach(([source, data]) => {
+            const successRate = data.total > 0 ? ((data.success / data.total) * 100).toFixed(1) : 0;
+            html += `
+                <div class="table-row">
+                    <span class="col-source">${source.toUpperCase()}</span>
+                    <span class="col-total">${data.total}</span>
+                    <span class="col-success">${data.success}</span>
+                    <span class="col-skip">${data.skip}</span>
+                    <span class="col-error">${data.error}</span>
+                    <span class="col-rate">
+                        <div class="mini-bar-container">
+                            <div class="mini-bar" style="width: ${successRate}%"></div>
+                        </div>
+                        <span>${successRate}%</span>
+                    </span>
+                </div>
+            `;
+        });
+    
+    if (Object.keys(analytics.ai.bySource).length === 0) {
+        html += '<div class="no-data">No AI data by source available</div>';
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 // Initialize app

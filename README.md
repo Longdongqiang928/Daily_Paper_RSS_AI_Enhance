@@ -243,40 +243,46 @@ if __name__ == '__main__':
 
 ```
 Daily_Paper_RSS_AI_Enhance/
-├── .venv/                               # python 虚拟环境
+├── .venv/                               # Python 虚拟环境
 ├── ai/                                  # AI 增强和排序模块
 │   ├── enhance.py                       # 基于 LLM 的论文摘要生成
 │   ├── structure.py                     # AI 输出的数据结构
 │   ├── system.txt                       # 系统提示词模板
 │   ├── template.txt                     # 用户提示词模板
+│   ├── translate.py                     # 摘要翻译模块
 │   └── zotero_recommender.py            # 基于嵌入向量的 Zotero 排序
 ├── fetcher/                             # RSS 抓取模块
+│   ├── abstract_extracter.py            # 摘要提取器(Nature API/Tavily 回退链)
 │   └── rss_fetcher.py                   # 通用多源 RSS 抓取器
 ├── data/                                # 论文数据存储 (JSONL 格式)
 │   └── cache/                           # RSS 缓存、更新日志和收藏数据
 │       ├── favorites.json               # 永久收藏数据
 │       ├── favorites_folders.json       # 收藏夹文件夹列表
+│       ├── favorites_papers.json        # 收藏论文详情缓存
 │       ├── file-list.txt                # 论文数据文件名列表
-│       ├── rss_cache_arxiv.json         # arXiv RSS 缓存
-│       ├── rss_cache_nature.json        # Nature RSS 缓存
+│       ├── rss_cache_*.json             # 各来源 RSS 缓存
 │       ├── update.json                  # 最近更新日志
 │       ├── zotero_corpus_timestamp.txt  # Zotero 文献库抓取时间戳
 │       └── zotero_corpus.pkl            # Zotero 文献库数据缓存
+├── assets/                              # 静态资源文件
 ├── css/                                 # 样式表
 │   └── style.css                        # 主样式文件
 ├── js/                                  # JavaScript 脚本
 │   └── app.js                           # 主应用逻辑
-├── index.html                           # 主 Web 界面
-├── api_server.py                        # Flask API 服务器(收藏夹持久化)
-├── main.py                              # 主程序入口点(定时任务调度)
-├── logger_config.py                     # 日志配置
-├── test.py                              # 测试文件
-├── pyproject.toml                       # 项目依赖
-├── uv.lock                              # 依赖锁文件
+├── .env.example                         # 环境变量模板
 ├── .gitignore                           # Git 忽略规则
+├── api_server.py                        # Flask API 服务器(收藏夹持久化)
+├── config.py                            # 集中配置模块(加载 .env)
 ├── DISCLAIMER.md                        # 免责声明
+├── index.html                           # 主 Web 界面
 ├── LICENSE                              # AGPL-3.0 许可证
-└── README.md                            # 本文件
+├── logger_config.py                     # 日志配置
+├── main.py                              # 主程序入口点(定时任务调度)
+├── pyproject.toml                       # 项目依赖
+├── README.md                            # 本文件
+├── refresh_favorites_cache.py           # 收藏夹缓存刷新工具
+├── test.py                              # 测试文件
+└── uv.lock                              # 依赖锁文件
 ```
 
 ---
