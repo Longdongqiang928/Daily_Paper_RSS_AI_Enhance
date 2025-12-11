@@ -102,14 +102,15 @@ class AIEnhancer:
                 item['AI'] = 'Skip'
                 return item
         if item_p:
-            if 'AI' in item_p and item_p.get('AI', {}).get('tldr') != 'Error':
-                logger.debug(f"[{source}] Skipping already processed item: {item['id']}")
-                if item['id'] != item_p['id']:
-                    logger.error(f"[{source}] Item ID mismatch: {item['id']} != {item_p['id']}")
-                    raise ValueError(f"[{source}] Item ID mismatch: {item['id']} != {item_p['id']}")
-                item['AI'] = item_p['AI']
+            if 'AI' in item_p and item_p['AI'] != "Skip":
+                if item_p.get('AI', {}).get('tldr') != 'Error':
+                    logger.debug(f"[{source}] Skipping already processed item: {item['id']}")
+                    if item['id'] != item_p['id']:
+                        logger.error(f"[{source}] Item ID mismatch: {item['id']} != {item_p['id']}")
+                        raise ValueError(f"[{source}] Item ID mismatch: {item['id']} != {item_p['id']}")
+                    item['AI'] = item_p['AI']
 
-                return item
+                    return item
         
         logger.debug(f"[{source}] Processing item: {item['id']}")
         
@@ -241,12 +242,32 @@ class AIEnhancer:
             except Exception as e:
                 logger.error(f"[{source}] Failed to load data from {output_file}: {e}")
                 raise
-            if len(papers) != len(papers_p):
-                logger.warning(f"[{source}] Length of papers ({len(papers)}) and processed papers ({len(papers_p)}) do not match")
-            while len(papers) > len(papers_p):
-                papers_p.append(None)
-            while len(papers_p) > len(papers):
-                papers_p.pop()
+            # Create a mapping from paper ID to processed paper
+            papers_p_map = {p.get('id'): p for p in papers_p if p and p.get('id')}
+            
+            # Reorder papers_p according to papers sequence
+            # - If paper exists in papers but not in papers_p, insert None
+            # - If paper exists in papers_p but not in papers, it will be excluded
+            reordered_papers_p = []
+            for paper in papers:
+                paper_id = paper.get('id')
+                if paper_id and paper_id in papers_p_map:
+                    reordered_papers_p.append(papers_p_map[paper_id])
+                else:
+                    reordered_papers_p.append(None)
+            
+            # Log any discrepancies
+            original_ids = set(p.get('id') for p in papers if p.get('id'))
+            processed_ids = set(papers_p_map.keys())
+            missing_in_processed = original_ids - processed_ids
+            extra_in_processed = processed_ids - original_ids
+            
+            if missing_in_processed:
+                logger.info(f"[{source}] {len(missing_in_processed)} papers need AI enhancement (not in processed file)")
+            if extra_in_processed:
+                logger.info(f"[{source}] {len(extra_in_processed)} papers in processed file no longer exist in source (will be removed)")
+            
+            papers_p = reordered_papers_p
 
         else:
             papers_p = [None] * len(papers)

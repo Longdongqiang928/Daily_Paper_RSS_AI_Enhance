@@ -7,6 +7,7 @@ from fetcher.rss_fetcher import rss_fetcher_main
 from ai.zotero_recommender import zotero_recommender_main
 from ai.enhance import enhance_main
 from ai.translate import translate_main
+from md.convert_to_md import convert_to_md_main
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generic RSS fetcher for academic papers')
@@ -57,6 +58,9 @@ def main(args):
     zotero_recommender_main(date, args.output_dir, args.embedding_model, use_cache=False)
     enhance_main(date, args.output_dir, args.model_name, args.language, args.max_workers)
     translate_main(date, args.output_dir, args.model_name, args.language)
+    
+    # Convert to markdown if not already exists
+    convert_to_md_main(date, args.output_dir, args.language)
 
     # Write list of files in data folder to file-list.txt
     data_dir = args.output_dir
@@ -85,6 +89,9 @@ def main_week_check(args):
             zotero_recommender_main(output, args.output_dir, args.embedding_model, use_cache=True)
             enhance_main(output, args.output_dir, args.model_name, args.language, args.max_workers)
             translate_main(output, args.output_dir, args.model_name, args.language)
+            
+            # Convert to markdown if not already exists
+            convert_to_md_main(output, args.output_dir, args.language)
 
         # Write list of files in data folder to file-list.txt
         data_dir = args.output_dir

@@ -525,8 +525,8 @@ schedule.every().sunday.at("10:00").do(main_week_check, args=args).tag('weekly-t
 - [x] **zotero请求优化**: 每周检查时会多次重复请求zotero,需建立缓存机制,每周检查时只请求一次而每日更新不受影响
 - [x] **添加数据分析页面**: 论文趋势分析和可视化（研究热点、来源分布、AI质量指标等）
 - [x] **登录认证系统**: 保护网站数据安全,需登录后访问
-- [ ] **AI联动**: 在详情页增加ai助手快速入口,提问论文内容
-- [ ] **Obsidian联动**: 将论文内容转换为md文件,并导入obsidian
+- [x] **Markdown**: 将论文内容转换为md文件
+- [ ] **Obsidian联动**: 导入obsidian
 
 ---
 
