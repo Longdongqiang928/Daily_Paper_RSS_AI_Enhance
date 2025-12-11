@@ -755,41 +755,19 @@ def process_source(extractor, source: str, categories: str, output_base: str, ou
         'source': source,
         'total_papers': len(papers),
         'new_papers': len(new_papers),
-        'new_papers_with_abs': len([p for p in new_papers if p['summary'] != '']),
+        'new_papers_with_abs': 0,
         'output_file': output_file
     }
     
     if new_papers:
         logger.info(f"[{source}] Found {len(new_papers)} new papers (out of {len(papers)} total)")
         
-        ################# Not Finished yet
-        # # Extract the abstract by a crawler implemented with crawl4ai
+        # Extract abstracts using the fallback chain
         if source != 'arxiv':
             new_papers = extractor.extract_abstracts(new_papers, source=source)
-        ################# Not Finished yet
-
-        # # Extract the abstract of an official api. Only implement for nature series
-        # # Get DOIs of papers with empty summaries
-        # dois_to_fetch = []
-        # for paper in new_papers:
-        #     if paper['summary'] == '':
-        #         # Extract DOI from abs URL for nature papers
-        #         if 'doi.org/' in paper['abs']:
-        #             doi = paper['abs'].split('doi.org/')[-1]
-        #             dois_to_fetch.append(doi)
         
-        # if dois_to_fetch:
-        #     logger.info(f"[{source}] Found {len(dois_to_fetch)} papers with empty summaries")
-        #     logger.debug(f"[{source}] DOIs to fetch: {dois_to_fetch}")
-        
-        #     if len(dois_to_fetch) == len(new_papers):
-        #         if source == 'nature':
-        #             new_papers =  get_abstract(source, dois_to_fetch)  
-        #         result['new_papers_with_abs'] = len([p for p in new_papers if p['summary'] != ''])
-        #         logger.info(f"[{source}] Successfully fetched abstracts for {result['new_papers_with_abs']} out of {len(dois_to_fetch)} papers")
-        #     else:
-        #         raise Exception(f"[{source}] Number of new_papers ({len(new_papers)}) does not match number of DOIs need to be fetched ({len(dois_to_fetch)})")
-            
+        # Update count after extraction
+        result['new_papers_with_abs'] = len([p for p in new_papers if p.get('summary')])            
         
         # Append new papers to the output file
         append_mode = os.path.exists(output_file)

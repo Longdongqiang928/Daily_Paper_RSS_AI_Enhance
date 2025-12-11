@@ -111,6 +111,19 @@ class AIEnhancer:
                 return item
         
         logger.debug(f"[{source}] Processing item: {item['id']}")
+        
+        # Check if summary is empty
+        if not item.get('summary') or item['summary'].strip() == '':
+            logger.info(f"[{source}] Empty summary for {item['id']}, setting AI content to 'No Summary Available.'")
+            item['AI'] = {
+                "tldr": "No Summary Available.",
+                "motivation": "No Summary Available.",
+                "method": "No Summary Available.",
+                "result": "No Summary Available.",
+                "conclusion": "No Summary Available."
+            }
+            return item
+        
         try:
             response = self.chain.invoke({
                 "language": self.language,
@@ -181,7 +194,8 @@ class AIEnhancer:
                     logger.error(f"[{source}] Item at index {idx} generated an exception: {e}")
                     processed_data[idx] = papers[idx]
         
-        logger.info(f"[{source}] Completed processing {len(papers)} papers")
+        logger.info(f"[{source}] Completed AI enhancement for {len(papers)} papers")
+        
         return processed_data
     
     def process_file(self, input_file: str, source: str) -> str:
@@ -300,7 +314,7 @@ def process_multi_source_files(data_pattern: str, enhancer: AIEnhancer, data_dir
     return processed_files
 
 
-def enhance_main(data='0000-00-00', data_dir='data', model_name='gpt-oss-20b', 
+def enhance_main(data='0000-00-00', data_dir='data', model_name='qwen3-30b-a3b-instruct-2507', 
                  language='Chinese', max_workers=1):
     """
     Main function for AI enhancement.
@@ -327,7 +341,7 @@ def enhance_main(data='0000-00-00', data_dir='data', model_name='gpt-oss-20b',
         max_workers=max_workers
     )
     
-    # Process multiple source files
+    # Process multiple source files (AI enhancement only)
     processed_files = process_multi_source_files(data, enhancer, data_dir)
     
     logger.info("="*60)

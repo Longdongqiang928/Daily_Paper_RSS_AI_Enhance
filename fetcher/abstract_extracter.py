@@ -326,7 +326,8 @@ class AbstractExtractor:
         total_batches = (len(urls_to_fetch) + batch_size - 1) // batch_size
         logger.info(f"[{source}] Fetching {len(urls_to_fetch)} URLs via Tavily in {total_batches} batch(es)")
         
-        processed_urls = set()
+        processed_urls = set()  # URLs that got a response from Tavily (success or extraction failed)
+        failed_batch_urls = set()  # URLs where Tavily API call failed (should retry)
         
         for batch_idx in range(0, len(urls_to_fetch), batch_size):
             batch_urls = urls_to_fetch[batch_idx:batch_idx + batch_size]
@@ -343,6 +344,9 @@ class AbstractExtractor:
                 if response and response.get('results'):
                     results = response['results']
                     logger.debug(f"[{source}] Batch {batch_num} returned {len(results)} results")
+                    
+                    # Track which URLs got responses in this batch
+                    batch_responded_urls = set()
                     
                     # Process each result and match back to papers
                     for result in results:
@@ -366,27 +370,44 @@ class AbstractExtractor:
                                     break
                         
                         if matched_paper and matched_url not in processed_urls:
+                            batch_responded_urls.add(matched_url)
                             # Extract abstract and categories from raw content
                             abstract, categories = self._extract_from_tavily_content(raw_content, source)
                             
+                            # Always mark as processed (Tavily returned data)
+                            # If extraction failed, set empty summary - don't retry
+                            matched_paper['summary'] = abstract if abstract else ""
+                            if categories and not matched_paper.get('category'):
+                                matched_paper['category'] = categories
+                            papers_with_abs.append(matched_paper)
+                            processed_urls.add(matched_url)
+                            
                             if abstract:
-                                matched_paper['summary'] = abstract
-                                if categories and not matched_paper.get('category'):
-                                    matched_paper['category'] = categories
-                                papers_with_abs.append(matched_paper)
-                                processed_urls.add(matched_url)
                                 logger.debug(f"[{source}] Extracted abstract for URL: {matched_url}")
                             else:
-                                logger.debug(f"[{source}] No abstract extracted for URL: {matched_url}")
+                                logger.debug(f"[{source}] Tavily returned but no abstract extracted for URL: {matched_url}")
+                    
+                    # URLs in batch that didn't get a response - should retry
+                    for batch_url in batch_urls:
+                        if batch_url not in batch_responded_urls and batch_url not in processed_urls:
+                            failed_batch_urls.add(batch_url)
                 else:
+                    # Empty response - all URLs in this batch should retry
                     logger.warning(f"[{source}] Empty Tavily response for batch {batch_num}")
+                    for batch_url in batch_urls:
+                        if batch_url not in processed_urls:
+                            failed_batch_urls.add(batch_url)
                     
             except Exception as e:
+                # API error - all URLs in this batch should retry
                 logger.error(f"[{source}] Tavily batch {batch_num} API error: {e}")
+                for batch_url in batch_urls:
+                    if batch_url not in processed_urls:
+                        failed_batch_urls.add(batch_url)
         
-        # Add papers that weren't successfully processed to failed list
+        # Add papers where Tavily API failed (no response) to retry list
         for url, paper in url_to_paper.items():
-            if url not in processed_urls:
+            if url not in processed_urls and url in failed_batch_urls:
                 papers_without_abs.append(paper)
         
         logger.info(f"[{source}] Tavily total: {len(papers_with_abs)} success, {len(papers_without_abs)} failed")

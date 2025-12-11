@@ -907,6 +907,13 @@ function showPaperDetails(paperId) {
                 <h3><i class="fa-solid fa-align-left"></i> Original Abstract</h3>
                 <p>${paper.summary || 'No abstract available'}</p>
             </div>
+            
+            ${paper.AI && paper.AI.summary_translated ? `
+            <div class="paper-abstract translated-abstract">
+                <h3><i class="fa-solid fa-language"></i> Translated Abstract</h3>
+                <p>${paper.AI.summary_translated}</p>
+            </div>
+            ` : ''}
         </div>
         <div class="modal-footer">
             <div class="footer-info">

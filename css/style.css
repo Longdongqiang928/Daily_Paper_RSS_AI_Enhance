@@ -1586,6 +1586,20 @@ body {
   line-height: 1.7;
 }
 
+/* Translated Abstract */
+.translated-abstract {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  background: rgba(20, 184, 166, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid rgba(20, 184, 166, 0.15);
+}
+
+.translated-abstract h3 i {
+  color: var(--color-accent);
+}
+
 /* Folder Modal */
 .folder-list {
   display: flex;
