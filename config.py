@@ -31,6 +31,11 @@ class Config:
     # Nature API Configuration
     NATURE_API_KEY: str = os.getenv("NATURE_API_KEY", "")
     
+    # Authentication Configuration
+    AUTH_USERNAME: str = os.getenv("AUTH_USERNAME", "admin")
+    AUTH_PASSWORD: str = os.getenv("AUTH_PASSWORD", "changeme")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "default-secret-key-change-me")
+    
     # Logging Configuration
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 

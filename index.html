@@ -16,7 +16,45 @@
         <div class="gradient-blob"></div>
     </div>
 
-    <div class="app-container">
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-container">
+            <div class="login-brand">
+                <img src="assets/logo_pic.png" alt="Logo" class="login-logo">
+                <img src="assets/logo_name.png" alt="PaperPulse AI" class="login-name">
+            </div>
+            <p class="login-description">
+                Your AI-powered research paper dashboard. Discover, organize, and analyze 
+                the latest academic papers with intelligent summaries and personalized recommendations.
+            </p>
+            <form id="login-form" class="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fa-solid fa-user"></i>
+                        Username
+                    </label>
+                    <input type="text" id="username" name="username" placeholder="Enter your username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fa-solid fa-lock"></i>
+                        Password
+                    </label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+                </div>
+                <div id="login-error" class="login-error"></div>
+                <button type="submit" class="login-btn" id="login-btn">
+                    <span class="btn-text">Sign In</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+            <div class="login-footer">
+                <p>Secure access to your research dashboard</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container" id="app-container" style="display: none;">
         <nav class="sidebar">
             <div class="brand">
 
@@ -55,7 +93,7 @@
 
                 <hr class="line">
 
-                <li>
+                <li onclick="handleLogout()">
                     <i class="fa-solid fa-right-from-bracket"></i>
                     <span>Logout</span>
                 </li>

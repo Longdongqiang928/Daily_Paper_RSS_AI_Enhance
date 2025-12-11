@@ -4,14 +4,18 @@ Simple API server for handling favorites persistence.
 Stores favorites data in data/cache/favorites.json
 """
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 import json
 import os
 from pathlib import Path
+from functools import wraps
+import secrets
+from config import config
 
 app = Flask(__name__, static_folder='.')
-CORS(app)
+app.secret_key = config.SECRET_KEY if config.SECRET_KEY else secrets.token_hex(32)
+CORS(app, supports_credentials=True)
 
 # Path to favorites storage
 FAVORITES_FILE = Path('data/cache/favorites.json')
@@ -20,6 +24,64 @@ FAVORITES_PAPERS_CACHE = Path('data/cache/favorites_papers.json')
 
 # Ensure cache directory exists
 FAVORITES_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+
+# Authentication decorator
+def login_required(f):
+    """Decorator to require authentication for API endpoints"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('authenticated'):
+            return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+# Authentication Endpoints
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    """Authenticate user with username and password"""
+    data = request.json
+    username = data.get('username', '')
+    password = data.get('password', '')
+    
+    if username == config.AUTH_USERNAME and password == config.AUTH_PASSWORD:
+        session['authenticated'] = True
+        session['username'] = username
+        return jsonify({
+            'status': 'success',
+            'message': 'Login successful',
+            'username': username
+        })
+    else:
+        return jsonify({
+            'status': 'error',
+            'message': 'Invalid username or password'
+        }), 401
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    """Log out user and clear session"""
+    session.clear()
+    return jsonify({
+        'status': 'success',
+        'message': 'Logged out successfully'
+    })
+
+
+@app.route('/api/auth/check', methods=['GET'])
+def check_auth():
+    """Check if user is authenticated"""
+    if session.get('authenticated'):
+        return jsonify({
+            'authenticated': True,
+            'username': session.get('username', '')
+        })
+    else:
+        return jsonify({
+            'authenticated': False
+        })
 
 
 def load_favorites():
@@ -202,6 +264,7 @@ def update_favorites_papers_cache(paper_ids_to_add=None, paper_ids_to_remove=Non
 
 # API Endpoints
 @app.route('/api/favorites', methods=['GET'])
+@login_required
 def get_favorites():
     """Get all favorites"""
     favorites = load_favorites()
@@ -209,6 +272,7 @@ def get_favorites():
 
 
 @app.route('/api/favorites', methods=['POST'])
+@login_required
 def update_favorites():
     """Update favorites and sync the papers cache"""
     data = request.json
@@ -236,6 +300,7 @@ def update_favorites():
 
 
 @app.route('/api/favorites/ids', methods=['GET'])
+@login_required
 def get_favorite_ids():
     """Get all favorite paper IDs (flattened from all folders)"""
     favorites = load_favorites()
@@ -248,6 +313,7 @@ def get_favorite_ids():
 
 
 @app.route('/api/favorites/folders', methods=['GET'])
+@login_required
 def get_folders():
     """Get all folders"""
     folders = load_folders()
@@ -255,6 +321,7 @@ def get_folders():
 
 
 @app.route('/api/favorites/folders', methods=['POST'])
+@login_required
 def update_folders():
     """Update folders"""
     data = request.json
@@ -265,6 +332,7 @@ def update_folders():
 
 
 @app.route('/api/favorites/papers', methods=['GET'])
+@login_required
 def get_favorites_papers():
     """Get all cached favorited papers"""
     papers = load_favorites_papers_cache()
@@ -272,6 +340,7 @@ def get_favorites_papers():
 
 
 @app.route('/api/favorites/papers/refresh', methods=['POST'])
+@login_required
 def refresh_favorites_papers():
     """Rebuild the entire favorites papers cache from current favorites list"""
     favorites = load_favorites()

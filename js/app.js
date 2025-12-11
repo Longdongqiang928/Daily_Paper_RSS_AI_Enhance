@@ -20,8 +20,158 @@ const AppState = {
     favorites: {},
     favoritesFolders: ['Default'],
     updateInfo: null,
-    language: localStorage.getItem('preferredLanguage') || 'Chinese'
+    language: localStorage.getItem('preferredLanguage') || 'Chinese',
+    isAuthenticated: false,
+    username: ''
 };
+
+// ============================================
+// Authentication Functions
+// ============================================
+
+async function checkAuth() {
+    /**
+     * Check if the user is authenticated.
+     * Returns true if authenticated, false otherwise.
+     */
+    try {
+        const response = await fetch('/api/auth/check', {
+            credentials: 'include'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            AppState.isAuthenticated = data.authenticated;
+            AppState.username = data.username || '';
+            return data.authenticated;
+        }
+    } catch (error) {
+        console.error('Failed to check authentication:', error);
+    }
+    AppState.isAuthenticated = false;
+    return false;
+}
+
+function showLoginScreen() {
+    /**
+     * Show the login screen and hide the app.
+     */
+    const loginScreen = document.getElementById('login-screen');
+    const appContainer = document.getElementById('app-container');
+    
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (appContainer) appContainer.style.display = 'none';
+}
+
+function showAppScreen() {
+    /**
+     * Show the app and hide the login screen.
+     */
+    const loginScreen = document.getElementById('login-screen');
+    const appContainer = document.getElementById('app-container');
+    
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (appContainer) appContainer.style.display = 'flex';
+}
+
+async function handleLogin(event) {
+    /**
+     * Handle the login form submission.
+     */
+    event.preventDefault();
+    
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const errorDiv = document.getElementById('login-error');
+    const loginBtn = document.getElementById('login-btn');
+    
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    
+    // Clear previous error
+    if (errorDiv) errorDiv.textContent = '';
+    
+    // Disable button and show loading state
+    if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<span class="btn-text">Signing in...</span><i class="fa-solid fa-spinner fa-spin"></i>';
+    }
+    
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.status === 'success') {
+            // Login successful
+            AppState.isAuthenticated = true;
+            AppState.username = data.username;
+            
+            // Clear form
+            usernameInput.value = '';
+            passwordInput.value = '';
+            
+            // Show app
+            showAppScreen();
+            
+            // Initialize the app
+            await initMainApp();
+        } else {
+            // Login failed
+            if (errorDiv) {
+                errorDiv.textContent = data.message || 'Login failed. Please try again.';
+            }
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        if (errorDiv) {
+            errorDiv.textContent = 'Connection error. Please try again.';
+        }
+    } finally {
+        // Re-enable button
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = '<span class="btn-text">Sign In</span><i class="fa-solid fa-arrow-right"></i>';
+        }
+    }
+}
+
+async function handleLogout() {
+    /**
+     * Handle the logout action.
+     */
+    try {
+        const response = await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            // Clear app state
+            AppState.isAuthenticated = false;
+            AppState.username = '';
+            AppState.papers = [];
+            AppState.filteredPapers = [];
+            AppState.favorites = {};
+            AppState.favoritesFolders = ['Default'];
+            AppState.loadedDates.clear();
+            AppState.selectedDates.clear();
+            
+            // Show login screen
+            showLoginScreen();
+        } else {
+            console.error('Logout failed');
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+}
 
 // Data loading functions
 async function loadUpdateInfo() {
@@ -2121,9 +2271,9 @@ function displayAIBySource(analytics) {
     container.innerHTML = html;
 }
 
-// Initialize app
-async function initApp() {
-    console.log('Initializing app...');
+// Initialize main app content (after authentication)
+async function initMainApp() {
+    console.log('Initializing main app content...');
     
     // Load favorites and metadata first (these are fast)
     await Promise.all([
@@ -2135,7 +2285,17 @@ async function initApp() {
     // Then load only the initial papers (today's date + favorites)
     await loadInitialPapers();
     
-    // Set up event listeners
+    // Display home page by default
+    displayUpdateInfo();
+    
+    console.log('Main app initialized successfully');
+}
+
+// Initialize app
+async function initApp() {
+    console.log('Initializing app...');
+    
+    // Set up event listeners (these should always be available)
     document.addEventListener('click', (e) => {
         if (e.target.id === 'paper-modal') {
             closePaperDetails();
@@ -2163,8 +2323,17 @@ async function initApp() {
     // Back to top button visibility
     window.addEventListener('scroll', toggleBackToTopButton);
     
-    // Display home page by default
-    displayUpdateInfo();
+    // Check authentication status
+    const isAuthenticated = await checkAuth();
+    
+    if (isAuthenticated) {
+        // User is already authenticated, show app and load content
+        showAppScreen();
+        await initMainApp();
+    } else {
+        // User is not authenticated, show login screen
+        showLoginScreen();
+    }
     
     console.log('App initialized successfully');
 }
