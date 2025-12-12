@@ -116,7 +116,7 @@ class AIEnhancer:
         
         # Check if summary is empty
         if not item.get('summary') or item['summary'].strip() == '':
-            logger.info(f"[{source}] Empty summary for {item['id']}, setting AI content to 'No Summary Available.'")
+            logger.warning(f"[{source}] Empty summary for {item['id']}, setting AI content to 'No Summary Available.'")
             item['AI'] = {
                 "tldr": "No Summary Available.",
                 "motivation": "No Summary Available.",

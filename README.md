@@ -1,5 +1,7 @@
 # Daily Paper RSS AI Enhance
 
+**中文** | [English](README_EN.md)
+
 **基于 RSS 订阅的智能学术论文推荐系统**
 
 > 📚 通过 AI 增强和 Zotero 文献库智能排序,自动发现与你研究兴趣相关的最新学术论文
@@ -301,13 +303,15 @@ Daily_Paper_RSS_AI_Enhance/
 ├── .gitignore                           # Git 忽略规则
 ├── api_server.py                        # Flask API 服务器(收藏夹持久化)
 ├── config.py                            # 集中配置模块(加载 .env)
-├── DISCLAIMER.md                        # 免责声明
+├── DISCLAIMER.md                        # 免责声明（中文）
+├── DISCLAIMER_EN.md                     # 免责声明（英文）
 ├── index.html                           # 主 Web 界面
 ├── LICENSE                              # AGPL-3.0 许可证
 ├── logger_config.py                     # 日志配置
 ├── main.py                              # 主程序入口点(定时任务调度)
 ├── pyproject.toml                       # 项目依赖
-├── README.md                            # 本文件
+├── README.md                            # 本文件（中文）
+├── README_EN.md                         # 英文版 README
 ├── refresh_favorites_cache.py           # 收藏夹缓存刷新工具
 ├── test.py                              # 测试文件
 └── uv.lock                              # 依赖锁文件
@@ -604,7 +608,7 @@ AGPL-3.0 确保:
 
 ---
 
-**最后更新**: 2025-12-11
+**最后更新**: 2025-12-12
 
 ---
 

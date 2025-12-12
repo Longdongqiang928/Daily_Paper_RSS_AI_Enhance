@@ -22,7 +22,8 @@ const AppState = {
     updateInfo: null,
     language: localStorage.getItem('preferredLanguage') || 'Chinese',
     isAuthenticated: false,
-    username: ''
+    username: '',
+    hideEmptyAbstracts: true // Default: hide papers without abstracts
 };
 
 // ============================================
@@ -619,6 +620,14 @@ function displaySearchBar() {
                        value="${AppState.filters.searchQuery}" oninput="handleSearch(this.value)">
                 ${AppState.filters.searchQuery ? '<i class="fa-solid fa-times clear-search" onclick="clearSearch()"></i>' : ''}
             </div>
+            <div class="abstract-toggle-container">
+                <label class="abstract-toggle-label">
+                    <span class="toggle-text">Show No-Abstract</span>
+                    <input type="checkbox" ${!AppState.hideEmptyAbstracts ? 'checked' : ''} 
+                           onchange="toggleEmptyAbstracts(this.checked)">
+                    <span class="abstract-toggle-slider"></span>
+                </label>
+            </div>
             <div class="date-picker-button-container">
                 <button class="calendar-trigger-btn" onclick="openCalendarModal()">
                     <i class="fa-solid fa-calendar-days"></i>
@@ -857,6 +866,11 @@ function clearAllDates() {
     applyFilters();
 }
 
+function toggleEmptyAbstracts(showEmpty) {
+    AppState.hideEmptyAbstracts = !showEmpty;
+    applyFilters();
+}
+
 // Filter functions
 function toggleFilter(type, value) {
     if (AppState.filters[type].has(value)) {
@@ -931,6 +945,14 @@ async function applyFilters() {
             
             return title.includes(query) || authors.includes(query) || 
                    summary.includes(query) || tldr.includes(query);
+        });
+    }
+    
+    // Apply empty abstract filter
+    if (AppState.hideEmptyAbstracts) {
+        filtered = filtered.filter(paper => {
+            const summary = paper.summary || '';
+            return summary.trim() !== '';
         });
     }
     
