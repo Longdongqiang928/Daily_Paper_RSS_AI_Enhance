@@ -74,7 +74,7 @@ class AbstractExtractor:
         logger.info(f"[{source}] {len(papers_without_abs)} papers still need abstracts after Nature API")
         
         # Step 2: Try Tavily for remaining papers with up to 3 retries
-        max_retries = 3
+        max_retries = 5
         remaining_papers = papers_without_abs
         
         for retry in range(1, max_retries + 1):

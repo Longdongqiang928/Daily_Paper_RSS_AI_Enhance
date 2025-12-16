@@ -166,15 +166,17 @@ class ZoteroRecommender:
                 c['score'] = {}
         
         candidate_texts = [paper['summary'] for paper in candidates]
-        candidate_embeddings = self.get_embeddings(candidate_texts)
+        collections_unprocessed = [c for c in self.collections if c not in candidates[0]['score']]
+        if collections_unprocessed:
+            candidate_embeddings = self.get_embeddings(candidate_texts)
         logger.info(f"[{source}] Processing {len(candidates)} candidates against {len(self.collections)} collections")
         idx_collection = 1
+        
         for collection in self.collections:
-            if candidates and collection in candidates[0]['score']:
+            if collection not in collections_unprocessed:
                 logger.info(f'[{source}] Collection {collection} ({idx_collection}/{len(self.collections)}) already processed')
                 idx_collection += 1
-                continue
-            
+        for collection in collections_unprocessed:
             collection_corpus = [p for p in self.corpus if collection in p.get('paths', [])]
             if collection_corpus:
                 collection_corpus = sorted(
