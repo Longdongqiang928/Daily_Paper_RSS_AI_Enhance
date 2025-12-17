@@ -435,13 +435,21 @@ class RSSFetcher:
             rss_url = f"{self.base_url}{category}.xml"
             logger.info(f"Fetching {self.source} RSS feed from: {rss_url}")
             
-            try:
-                response = requests.get(rss_url, timeout=30)
-                response.raise_for_status()
-                logger.debug(f"RSS feed fetched successfully, status code: {response.status_code}")
-            except requests.RequestException as e:
-                logger.error(f"Failed to fetch RSS feed: {e}")
-                raise
+            max_retries = 5
+            retry_count = 0
+            while retry_count < max_retries:
+                try:
+                    response = requests.get(rss_url, timeout=120)
+                    response.raise_for_status()
+                    logger.debug(f"RSS feed fetched successfully, status code: {response.status_code}")
+                    break  # Success, exit the loop
+                except requests.RequestException as e:
+                    retry_count += 1
+                    logger.warning(f"Attempt {retry_count} failed to fetch RSS feed: {e}")
+                    if retry_count >= max_retries:
+                        logger.error(f"All {max_retries} attempts failed to fetch RSS feed")
+                        raise
+                    time.sleep(2 ** retry_count)  # Exponential backoff
             
             feed = feedparser.parse(response.content)
             

@@ -161,22 +161,28 @@ class ZoteroRecommender:
     def rerank_paper(self, candidates: List[Dict], source: str) -> List[Dict]:
         logger.info(f"[{source}] Starting paper re-ranking process")
         
+        candidates_unprocessed = 0
         for c in candidates:
             if 'score' not in c:
-                c['score'] = {}
+                c['score'] = {} 
+                candidates_unprocessed = 1
+            if c['score'] == {}:
+                candidates_unprocessed = 1
         
         candidate_texts = [paper['summary'] for paper in candidates]
         collections_unprocessed = [c for c in self.collections if c not in candidates[0]['score']]
-        if collections_unprocessed:
+        if collections_unprocessed or candidates_unprocessed:
             candidate_embeddings = self.get_embeddings(candidate_texts)
         logger.info(f"[{source}] Processing {len(candidates)} candidates against {len(self.collections)} collections")
         idx_collection = 1
         
         for collection in self.collections:
-            if collection not in collections_unprocessed:
-                logger.info(f'[{source}] Collection {collection} ({idx_collection}/{len(self.collections)}) already processed')
-                idx_collection += 1
-        for collection in collections_unprocessed:
+            if not candidates_unprocessed:
+                if collection not in collections_unprocessed:
+                    logger.info(f'[{source}] Collection {collection} ({idx_collection}/{len(self.collections)}) already processed')
+                    idx_collection += 1
+                    continue
+
             collection_corpus = [p for p in self.corpus if collection in p.get('paths', [])]
             if collection_corpus:
                 collection_corpus = sorted(
@@ -205,16 +211,14 @@ class ZoteroRecommender:
         
         for c in candidates:
             if c['score']:
+                if 'max' in c['score']:
+                    c['score'].pop('max')
                 c['score'] = dict(sorted(c['score'].items(), key=lambda item: item[1], reverse=True))
                 filtered_collections = [k for k, v in c['score'].items() if v > 4]
                 if filtered_collections:
-                    while 'max' in filtered_collections:
-                        filtered_collections.remove('max')
                     c['collection'] = filtered_collections
                 else:
                     max_score_collections = list(max(c['score'].items(), key=lambda x: x[1]))
-                    while 'max' in max_score_collections:
-                        max_score_collections.remove('max')
                     c['collection'] = [max_score_collections[0]]
                 c['score']['max'] = max(c['score'].values())
         
