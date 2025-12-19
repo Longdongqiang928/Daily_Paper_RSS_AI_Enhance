@@ -373,6 +373,7 @@ def serve_static(path):
 if __name__ == '__main__':
 
     import argparse
+    from gevent import pywsgi
     
     parser = argparse.ArgumentParser(description='API server for favorites persistence')
     parser.add_argument('--host', type=str, default='127.0.0.1:8000', help='Host to bind to (default: 127.0.0.1:8000)')
@@ -386,4 +387,5 @@ if __name__ == '__main__':
     print(f"Favorites papers cache: {FAVORITES_PAPERS_CACHE.absolute()}")
     print(f"Server running at http://{host}:{port}")
     print("Press Ctrl+C to stop")
-    app.run(host=host, port=port, debug=False)
+    server = pywsgi.WSGIServer((host, port), app)
+    server.serve_forever()
