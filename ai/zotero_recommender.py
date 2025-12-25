@@ -116,17 +116,43 @@ class ZoteroRecommender:
         
         return corpus
     
-    def get_embeddings(self, texts: List[str]) -> np.ndarray:
+    def get_embeddings(self, texts: List[str], collection: str='') -> np.ndarray:
         """
         Get embeddings from OpenAI-compatible API.
         
         Args:
             texts: List of texts to embed
+            collection: Collection name to filter papers
             
         Returns:
             Numpy array of embeddings
         """
-        logger.debug(f"Getting embeddings for {len(texts)} texts")
+
+        if '/' in collection:
+            collection = collection.replace('/', '_')
+        cache_file = self.cache_dir / f'zotero_corpus_{collection}.npy'
+        cache_timestamp_file = self.cache_dir / f'zotero_corpus_{collection}_timestamp.txt'
+
+        if collection and self.use_cache and cache_file.exists() and cache_timestamp_file.exists():
+            try:
+                # Read cache timestamp
+                with open(cache_timestamp_file, 'r') as f:
+                    cache_time_str = f.read().strip()
+                cache_time = datetime.fromisoformat(cache_time_str)
+                
+                # Check if cache is less than 24 hours old
+                if datetime.now() - cache_time < timedelta(hours=24):
+                    logger.debug(f"Loading {collection} embeddings from cache")
+                    embeddings = np.load(cache_file)
+                    logger.debug(f"Loaded {collection} embeddings from cache with shape: {embeddings.shape}")
+
+                    return embeddings
+                else:
+                    logger.debug(f"Cache is older than 24 hours (cached at {cache_time}), recalculate embeddings for {collection}")
+            except Exception as e:
+                logger.warning(f"Failed to load cache: {e},  recalculate embeddings for {collection}")
+
+        logger.debug(f"[{collection}] Getting embeddings for {len(texts)} texts")
         try:
             response = self.client.embeddings.create(
                 input=texts,
@@ -134,6 +160,14 @@ class ZoteroRecommender:
             )
             embeddings = np.array([item.embedding for item in response.data])
             logger.debug(f"Got embeddings with shape: {embeddings.shape}")
+            if collection and self.use_cache:
+                try:
+                    np.save(cache_file, embeddings)
+                    with open(cache_timestamp_file, 'w') as f:
+                        f.write(datetime.now().isoformat())
+                    logger.debug(f"Saved {collection} embeddings to cache: {cache_file}")
+                except Exception as e:
+                    logger.warning(f"Failed to save cache: {e}")
             return embeddings
         except Exception as e:
             logger.error(f"Failed to get embeddings: {e}")
@@ -197,7 +231,7 @@ class ZoteroRecommender:
                 corpus_texts = [paper['data']['abstractNote'] for paper in collection_corpus]
                 
                 logger.debug(f"[{source}] Getting embeddings for collection: {collection}")
-                corpus_embeddings = self.get_embeddings(corpus_texts)
+                corpus_embeddings = self.get_embeddings(corpus_texts, collection)
                 
                 # Compute similarity
                 sim = self.compute_similarity(candidate_embeddings, corpus_embeddings)
