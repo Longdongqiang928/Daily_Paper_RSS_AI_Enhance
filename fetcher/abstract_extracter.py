@@ -420,7 +420,7 @@ class AbstractExtractor:
                             remaining_urls.remove(matched_url)
                             
                             # Extract abstract and categories from raw content
-                            abstract, categories = self._extract_from_tavily_content(raw_content, source)
+                            abstract, categories = self._extract_from_tavily_content(raw_content, source, matched_url)
                             
                             # Always mark as processed (Tavily returned data)
                             # If extraction failed, set empty summary - don't retry as per requirements
@@ -488,16 +488,158 @@ class AbstractExtractor:
         if not text:
             return "", []
         
-        import re
-        
+        # Determine which extractor to use based on URL or source
         abstract = ""
-        categories = []
         
-        # Extract Abstract
-        # Pattern 1: Look for "Abstract\n--------" or "Abstract\n" followed by content
+        if source == "science":
+            abstract = self._extract_science(text)
+        elif source == "nature":
+            abstract = self._extract_nature(text)
+        elif source == "aps":
+            abstract = self._extract_aps(text)
+        elif source == "optica":
+            abstract = self._extract_optica(text)
+        elif source == "sciencedirect":
+            abstract = self._extract_sciencedirect(text)
+        elif source == "pubmed":
+            abstract = self._extract_pubmed(text)
+        else:
+            abstract = self._extract_generic(text)
+        
+        # If specific extractor failed, try generic
+        if not abstract:
+            abstract = self._extract_generic(text)
+            
+        # Extract Categories/Topics (generic logic for now as it's common across sources)
+        categories = self._extract_categories_generic(text)
+        
+        logger.debug(f"[{source}] Extracted abstract ({len(abstract)} chars) and {len(categories)} categories")
+        return abstract, categories
+
+    def _extract_science(self, text: str) -> str:
+          """Specific extractor for Science journals."""
+          import re
+          # Science usually has "Abstract" section. 
+          # User requirement: Extract "Abstract", ignore "Structured Abstract" and "Editor's summary".
+          
+          # Strategy: Find all "Abstract" occurrences and pick the one that is NOT structured
+          # The plain abstract usually comes after Structured Abstract if both exist, 
+          # or it might be the only one.
+          
+          # Pattern to match "Abstract" header (possibly with # or dashes)
+          # We look for "Abstract" that isn't preceded by "Structured "
+          # And it should be followed by a block of text, not just links.
+          
+          # First, let's try to find the one that is clearly a section header
+          patterns = [
+              # Match ## Abstract or ### Abstract
+              r'## Abstract\s*\n\s*(.+?)(?=\n\s*(?:##|###|Access|Supplementary|References|Information|Metrics))',
+              # Match Abstract followed by dashes
+              r'Abstract\s*\n[= \-]+\n\s*(.+?)(?=\n\s*(?:##|###|Access|Supplementary|References|Information|Metrics))',
+              # Fallback: Just "Abstract" as a line
+              r'\nAbstract\n\s*(.+?)(?=\n\s*(?:##|###|Access|Supplementary|References|Information|Metrics))',
+          ]
+          
+          for pattern in patterns:
+              matches = re.finditer(pattern, text, re.IGNORECASE | re.DOTALL)
+              for match in matches:
+                  content = match.group(1).strip()
+                  # Filter out "Structured Abstract" and "Editor's summary" if they accidentally matched
+                  # and ensure it's not just a list of links (common in Science sidebar)
+                  if len(content) > 100 and "INTRODUCTION" not in content[:200] and "Editor’s summary" not in content:
+                      return self._clean_abstract_text(content)
+          
+          return ""
+
+    def _extract_nature(self, text: str) -> str:
+        """Specific extractor for Nature journals."""
+        import re
+        # Nature usually has "Abstract" then content, then "Access options" or "Introduction"
+        patterns = [
+            r'Abstract\s*\n[= \-]+\n\s*(.+?)(?=\n\s*(?:Access options|Introduction|Methods|References|### |Rights and permissions))',
+            r'Abstract\s*\n\s*(.+?)(?=\n\s*(?:Access options|Introduction|Methods|References|### ))',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if match:
+                content = match.group(1).strip()
+                if len(content) > 100:
+                    return self._clean_abstract_text(content)
+        return ""
+
+    def _extract_aps(self, text: str) -> str:
+        """Specific extractor for APS journals (Physical Review, etc.)."""
+        import re
+        # APS usually has "Abstract" then content, then "Received" or "Published"
+        patterns = [
+            r'Abstract\s*\n[= \-]+\n\s*(.+?)(?=\n\s*(?:Received|Published|DOI:|Introduction|### ))',
+            r'Abstract\s*\n\s*(.+?)(?=\n\s*(?:Received|Published|DOI:|Introduction|### ))',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if match:
+                content = match.group(1).strip()
+                if len(content) > 100:
+                    return self._clean_abstract_text(content)
+        return ""
+
+    def _extract_optica(self, text: str) -> str:
+         """Specific extractor for Optica (formerly OSA) journals."""
+         import re
+         # Optica/OSA often has "Abstract" followed by content
+         patterns = [
+             # Look for Abstract followed by dashes, then content until copyright or next section
+             r'Abstract\s*\n[= \-]+\n\s*(.+?)(?=\n\s*(?:©|Introduction|Methods|References|###|Related Topics))',
+             # Simpler version without dashes
+             r'Abstract\s*\n\s*(.+?)(?=\n\s*(?:©|Introduction|Methods|References|###))',
+             # Fallback: Just take everything after the "Abstract" with dashes until a large gap or end
+             r'Abstract\s*\n[= \-]+\n\s*(.+?)(?=\n\n\n|$)',
+         ]
+         for pattern in patterns:
+             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+             if match:
+                 content = match.group(1).strip()
+                 if len(content) > 100:
+                     return self._clean_abstract_text(content)
+         return ""
+
+    def _extract_sciencedirect(self, text: str) -> str:
+        """Specific extractor for ScienceDirect."""
+        import re
+        # ScienceDirect often uses "Abstract" or "Summary"
+        patterns = [
+            r'Abstract\s*\n\s*(.+?)(?=\n\s*(?:Keywords|Introduction|Methods|Results|### ))',
+            r'Summary\s*\n\s*(.+?)(?=\n\s*(?:Keywords|Introduction|### ))',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if match:
+                content = match.group(1).strip()
+                if len(content) > 100:
+                    return self._clean_abstract_text(content)
+        return ""
+
+    def _extract_pubmed(self, text: str) -> str:
+        """Specific extractor for PubMed."""
+        import re
+        # PubMed uses "Abstract" or sections
+        patterns = [
+            r'Abstract\s*\n\s*(.+?)(?=\n\s*(?:Similar articles|Cited by|MeSH terms|### ))',
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if match:
+                content = match.group(1).strip()
+                if len(content) > 100:
+                    return self._clean_abstract_text(content)
+        return ""
+
+    def _extract_generic(self, text: str) -> str:
+        """Generic extractor for unknown sources."""
+        import re
         abstract_patterns = [
             # Pattern for academic sites with Abstract heading followed by dashes
-            r'Abstract\s*\n[-=]+\s*\n(.+?)(?=\n\d+\.\s|\n[A-Z][A-Z]+\n|© \d{4}|INTRODUCTION|Keywords)',
+            r'Abstract\s*\n[-=]+\s*\n(.+?)(?=\n\d+\.\s|\n[A-Z][A-Z]+\n|© \d{4}|INTRODUCTION|Keywords|References)',
             # Pattern for "Abstract" followed by text until next major section
             r'\bAbstract\b[:\s]*\n?(.+?)(?=\n\d+\.\s|\n##|\n\*\*[A-Z]|© \d{4}|\n[A-Z]{4,}\n|Introduction\n)',
             # Fallback: Abstract keyword followed by substantial text
@@ -508,24 +650,22 @@ class AbstractExtractor:
             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
             if match:
                 abstract = match.group(1).strip()
-                # Clean up the abstract
                 abstract = self._clean_abstract_text(abstract)
-                if len(abstract) > 100:  # Reasonable abstract length
-                    break
-                else:
-                    abstract = ""  # Too short, try next pattern
+                if len(abstract) > 100:
+                    return abstract
         
-        if len(abstract) > 6000:
-            abstract = abstract[:6000]
-        
-        # Extract Categories/Topics
-        # Pattern for "Related Topics" section with links
-        topics_patterns = [
-            # Optica/OSA style: "*   [Topic Name](url)"
-            r'Related Topics.*?\*\s+\[([^\]]+)\]\(https?://[^)]+\)',
-            # Generic topic extraction from "Related Topics" section
-            r'Related Topics[\s\S]*?(?:\*\s+\[([^\]]+)\])+',
-        ]
+        # Final fallback: if no "Abstract" keyword, but there is substantial text
+        # (This is risky but sometimes necessary)
+        if len(text) > 500 and len(text) < 10000:
+            # Just return a cleaned version of the first part of text if it's not too large
+            return self._clean_abstract_text(text[:2000])
+            
+        return ""
+
+    def _extract_categories_generic(self, text: str) -> List[str]:
+        """Generic category extraction logic."""
+        import re
+        categories = []
         
         # Try to find Related Topics section and extract all topics
         related_match = re.search(r'Related Topics[\s\S]*?(?=\n### |\n\*\s+###|About this Article|$)', text, re.IGNORECASE)
@@ -534,7 +674,7 @@ class AbstractExtractor:
             # Extract all bracketed topic names
             topic_matches = re.findall(r'\[([^\]]+)\]\(https?://[^)]+search[^)]*\)', related_section)
             if topic_matches:
-                categories = list(set(topic_matches))  # Remove duplicates
+                categories = list(set(topic_matches))
         
         # Also try to extract from "Optics & Photonics Topics" section
         if not categories:
@@ -543,12 +683,10 @@ class AbstractExtractor:
                 section = topics_match.group(0)
                 topic_matches = re.findall(r'\[([^\]]+)\]\(https?://[^)]+\)', section)
                 if topic_matches:
-                    # Filter out navigation/UI links
                     categories = [t for t in topic_matches if len(t) > 3 and not t.startswith('?') and 'http' not in t.lower()]
                     categories = list(set(categories))
-        
-        logger.debug(f"[{source}] Extracted abstract ({len(abstract)} chars) and {len(categories)} categories")
-        return abstract, categories
+                    
+        return categories
     
     def _clean_abstract_text(self, text: str) -> str:
         """
