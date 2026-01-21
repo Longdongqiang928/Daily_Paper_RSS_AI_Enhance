@@ -12,7 +12,7 @@ def parse_args():
         '--sources', 
         type=str, 
         # default='arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms+nphys+natrevphys+lsa+natmachintell,science:science+sciadv,optica:optica,aps:prl+prx+rmp',
-        default='aps:prl+prx+rmp',
+        default='arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton+ncomms+nphys+natrevphys+lsa+natmachintell,science:science+sciadv,optica:optica,aps:prl+prx+rmp',
         help='Comma-separated list of RSS sources:categories (e.g., arxiv:physics+quant-ph+cond-mat+nlin,nature:nature+nphoton,science:science+sciadv)'
     )
     parser.add_argument(
@@ -48,9 +48,12 @@ def parse_args():
 
     return parser.parse_args()
 
+from datetime import datetime
+
 def main(args):
-    # date = "2025-12-17"
-    date = "0000-00-00"
+    # current_time = datetime.now()
+    # date = current_time.strftime("%Y-%m-%d")
+    date = '0000-00-00'
     rss_fetcher_main(date, args.output_dir, args.sources)
     zotero_recommender_main(date, args.output_dir, args.embedding_model, use_cache=False)
     enhance_main(date, args.output_dir, args.model_name, args.language, args.max_workers)

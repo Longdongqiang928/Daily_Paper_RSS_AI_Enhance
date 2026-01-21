@@ -14,6 +14,8 @@ Usage:
 
 import os
 import sys
+import time
+import random
 from typing import List, Dict, Optional, Tuple
 import requests
 import xml.etree.ElementTree as ET
@@ -63,54 +65,46 @@ class AbstractExtractor:
         
         # Step 1: Try Nature API for all papers (batch processing)
         if source == "nature":
-            papers_with_abs, papers_without_abs = self._try_nature_api(papers, source)
+            papers_with_abs, papers_without_abs, remaining_papers = self._try_nature_api(papers, source)
         else:
-            papers_with_abs, papers_without_abs = [], papers
+            papers_with_abs, papers_without_abs, remaining_papers = [], [], papers
         
-        if not papers_without_abs:
-            logger.info(f"[{source}] All {len(papers_with_abs)} papers have abstracts from Nature API")
+        logger.info(f"[{source}] {len(papers_with_abs)} papers found with abstracts from Nature API")
+        logger.info(f"[{source}] {len(papers_without_abs)} papers have no abstracts from Nature API")
+        if not remaining_papers:
+            logger.info(f"[{source}] {len(papers_with_abs)+len(papers_without_abs)} papers fetched successfully from Nature API")
+            papers_with_abs.extend(papers_without_abs)
             return papers_with_abs
+        logger.info(f"[{source}] {len(remaining_papers)} papers still need to be fetched after Nature API")
         
-        logger.info(f"[{source}] {len(papers_without_abs)} papers still need abstracts after Nature API")
+        # Step 2: Try Tavily for remaining papers with internal retry logic
+        tavily_papers, tavily_without_abs, remaining_papers = self._try_tavily(remaining_papers, source)
         
-        # Step 2: Try Tavily for remaining papers with up to 3 retries
-        max_retries = 5
-        remaining_papers = papers_without_abs
-        
-        for retry in range(1, max_retries + 1):
-            if not remaining_papers:
-                break
-            
-            logger.info(f"[{source}] Tavily attempt {retry}/{max_retries} for {len(remaining_papers)} papers")
-            tavily_papers, failed_papers = self._try_tavily(remaining_papers, source)
-            papers_with_abs.extend(tavily_papers)
-            
-            if not failed_papers:
-                logger.info(f"[{source}] All papers have abstracts after Tavily attempt {retry}")
-                break
-            
-            remaining_papers = failed_papers
-            
-            if retry < max_retries:
-                logger.info(f"[{source}] {len(remaining_papers)} papers still need abstracts, will retry...")
-        
-        if remaining_papers:
-            logger.warning(f"[{source}] {len(remaining_papers)} papers failed to get abstracts after {max_retries} Tavily attempts")
-            # Include failed papers with empty summaries
-            papers_with_abs.extend(remaining_papers)
+        logger.info(f"[{source}] {len(tavily_papers)} papers found with abstracts from Tavily API")
+        logger.info(f"[{source}] {len(tavily_without_abs)} papers have no abstracts from Tavily API")
+        papers_with_abs.extend(tavily_papers)
+        papers_without_abs.extend(tavily_without_abs)
+        if not remaining_papers:
+            logger.info(f"[{source}] {len(papers_with_abs)+len(papers_without_abs)} papers fetched successfully from Nature and Tavily API")
+            papers_with_abs.extend(papers_without_abs)
+            return papers_with_abs
+        logger.info(f"[{source}] {len(remaining_papers)} papers still need to be fetched after Tavily API")
         
         logger.info(f"[{source}] Abstract extraction complete: {len([p for p in papers_with_abs if p.get('summary')])} papers with abstracts")
+        papers_with_abs.extend(papers_without_abs)  # include those papers without abstracts after all method
+        papers_with_abs.extend(remaining_papers)    # include those failed to fetch abstracts
         return papers_with_abs
-    
-    def _try_nature_api(self, papers: List[Dict], source: str) -> Tuple[List[Dict], List[Dict]]:
+
+    def _try_nature_api(self, papers: List[Dict], source: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         """
-        Try to fetch abstracts using Nature/Springer API.
+        Try to fetch abstracts using Nature/Springer API with multi-round retry logic.
         
         Returns:
-            Tuple of (papers with abstracts, papers without abstracts)
+            Tuple of (papers_with_abs, papers_without_abs, paper_failed)
         """
         papers_with_abs = []
         papers_without_abs = []
+        paper_failed = []
         
         # Extract DOIs for batch processing
         doi_to_paper = {}
@@ -134,49 +128,82 @@ class AbstractExtractor:
                 papers_without_abs.append(paper)
         
         if not dois_to_fetch:
-            return papers_with_abs, papers_without_abs
+            return papers_with_abs, papers_without_abs, paper_failed
         
         logger.info(f"[{source}] Fetching abstracts for {len(dois_to_fetch)} DOIs via Nature API")
         
-        # Fetch abstracts in batches
-        batch_size = 20
-        fetched_dois = set()
+        remaining_dois = list(dois_to_fetch)
+        max_retries = 5
         
-        for i in range(0, len(dois_to_fetch), batch_size):
-            batch = dois_to_fetch[i:i + batch_size]
-            logger.info(f"[{source}] Fetching batch {i//batch_size + 1} ({len(batch)} DOIs)")
+        # Round-based retry logic
+        for attempt in range(max_retries):
+            if not remaining_dois:
+                break
+                
+            if attempt > 0:
+                # Exponential backoff: 2^attempt + jitter
+                wait_time = (2 ** attempt) + random.uniform(0, 1)
+                logger.info(f"[{source}] Retrying Nature API (attempt {attempt+1}/{max_retries}) in {wait_time:.2f}s...")
+                time.sleep(wait_time)
             
-            try:
-                fetched_papers = self._fetch_nature_api_batch(batch, source)
-                for fp in fetched_papers:
-                    doi = fp.get('id')
-                    if doi in doi_to_paper:
-                        # Merge fetched data with original paper
+            current_batch_dois = list(remaining_dois)
+            batch_size = 20
+            
+            for i in range(0, len(current_batch_dois), batch_size):
+                batch = current_batch_dois[i:i + batch_size]
+                logger.info(f"[{source}] Fetching batch {i//batch_size + 1} ({len(batch)} DOIs), attempt {attempt+1}")
+                
+                try:
+                    fetched_papers = self._fetch_nature_api_batch(batch, source)
+                    
+                    # Success: These DOIs are processed (either found or not found in response)
+                    fetched_dois_map = {fp.get('id'): fp for fp in fetched_papers}
+                    
+                    for doi in batch:
+                        if doi in remaining_dois:
+                            remaining_dois.remove(doi)
+                        
                         original = doi_to_paper[doi]
-                        original['summary'] = fp.get('summary', '')
-                        if fp.get('category'):
-                            original['category'] = fp['category']
-                        if fp.get('journal') and not original.get('journal'):
-                            original['journal'] = fp['journal']
-                        if fp.get('authors') and not original.get('authors'):
-                            original['authors'] = fp['authors']
-                        if fp.get('published') and not original.get('published'):
-                            original['published'] = fp['published']
-                        papers_with_abs.append(original)
-                        fetched_dois.add(doi)
-            except Exception as e:
-                logger.error(f"[{source}] Error fetching batch {i//batch_size + 1}: {e}")
+                        if doi in fetched_dois_map:
+                            fp = fetched_dois_map[doi]
+                            # Merge fetched data with original paper
+                            original['summary'] = fp.get('summary', '')
+                            if fp.get('category'):
+                                original['category'] = fp['category']
+                            if fp.get('journal') and not original.get('journal'):
+                                original['journal'] = fp['journal']
+                            if fp.get('authors') and not original.get('authors'):
+                                original['authors'] = fp['authors']
+                            if fp.get('published') and not original.get('published'):
+                                original['published'] = fp['published']
+                            papers_with_abs.append(original)
+                        else:
+                            # Not found in successful API response - don't retry as per requirements
+                            logger.debug(f"[{source}] DOI {doi} not found in Nature API response")
+                            papers_without_abs.append(original)
+                            
+                except Exception as e:
+                    # Request failed, empty response, or parsing error - keep DOIs for next round retry
+                    logger.warning(f"[{source}] Batch attempt {i//batch_size + 1} failed (round {attempt+1}): {e}")
+                    # DOIs remain in remaining_dois and will be picked up in next attempt loop
         
-        # Add papers that weren't found via API to the without list
-        for doi in dois_to_fetch:
-            if doi not in fetched_dois:
-                papers_without_abs.append(doi_to_paper[doi])
+        # After all retries, any remaining DOIs are considered permanently failed
+        if remaining_dois:
+            for doi in remaining_dois:
+                paper = doi_to_paper[doi]
+                paper_failed.append(paper)
+                logger.error(f"[{source}] Nature API failed after {max_retries} attempts for DOI: {doi}. Last error info: {paper.get('abs')}")
         
-        return papers_with_abs, papers_without_abs
+        return papers_with_abs, papers_without_abs, paper_failed
     
     def _fetch_nature_api_batch(self, dois: List[str], source: str) -> List[Dict]:
         """
         Fetch abstracts from Nature/Springer API for a batch of DOIs.
+        
+        Raises:
+            requests.RequestException: If the network request fails or returns error status.
+            ValueError: If the response is empty.
+            ET.ParseError: If the XML parsing fails.
         """
         papers = []
         
@@ -185,13 +212,20 @@ class AbstractExtractor:
             logger.warning(f"[{source}] NATURE_API_KEY not set, skipping Nature API")
             return papers
         
-        try:
-            query_str = ' OR '.join([f'doi:"{doi}"' for doi in dois])
-            url = f'https://api.springernature.com/meta/v2/pam?api_key={api_key}&callback=&s=1&p=25&q=({query_str})'
-            response = requests.get(url, timeout=30)
-            response.raise_for_status()
-            logger.debug(f"[{source}] API request successful, status code: {response.status_code}")
+        query_str = ' OR '.join([f'doi:"{doi}"' for doi in dois])
+        url = f'https://api.springernature.com/meta/v2/pam?api_key={api_key}&callback=&s=1&p=25&q=({query_str})'
+        
+        response = requests.get(url, timeout=30)
+        
+        # Log response status and result (first round or retry)
+        logger.debug(f"[{source}] Nature API request: {url} | Status: {response.status_code}")
+        
+        response.raise_for_status()
+        
+        if not response.content:
+            raise ValueError("Empty response content from Nature API")
             
+        try:
             root = ET.fromstring(response.content)
             
             namespaces = {
@@ -208,13 +242,9 @@ class AbstractExtractor:
                 paper = self._parse_nature_article(article, namespaces, source, idx)
                 if paper:
                     papers.append(paper)
-        
         except ET.ParseError as e:
-            logger.error(f"[{source}] Error parsing XML: {e}")
-        except requests.RequestException as e:
-            logger.error(f"[{source}] Request error: {e}")
-        except Exception as e:
-            logger.error(f"[{source}] Unexpected error: {e}")
+            logger.error(f"[{source}] Error parsing XML from Nature API: {e}")
+            raise
         
         return papers
     
@@ -292,20 +322,20 @@ class AbstractExtractor:
         logger.debug(f"[{source}] Extracted abstract for DOI {article_doi}")
         return paper
     
-    def _try_tavily(self, papers: List[Dict], source: str) -> Tuple[List[Dict], List[Dict]]:
+    def _try_tavily(self, papers: List[Dict], source: str) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         """
-        Try to fetch abstracts using Tavily API with batch processing.
-        All paper URLs are sent in a single API call for efficiency.
+        Try to fetch abstracts using Tavily API with batch processing and multi-round retry logic.
         
         Returns:
-            Tuple of (papers with abstracts, papers without abstracts)
+            Tuple of (papers_with_abs, papers_without_abs, paper_failed)
         """
         papers_with_abs = []
         papers_without_abs = []
+        paper_failed = []
         
         if not self.tavily_client:
             logger.warning(f"[{source}] Tavily client not available, skipping")
-            return [], papers
+            return [], papers, []
         
         # Build URL to paper mapping and collect all URLs
         url_to_paper = {}
@@ -320,29 +350,44 @@ class AbstractExtractor:
             url_to_paper[url] = paper
         
         if not urls_to_fetch:
-            return papers_with_abs, papers_without_abs
+            return papers_with_abs, papers_without_abs, paper_failed
         
-        # Batch processing: 20 URLs per batch
-        batch_size = 20
-        total_batches = (len(urls_to_fetch) + batch_size - 1) // batch_size
-        logger.info(f"[{source}] Fetching {len(urls_to_fetch)} URLs via Tavily in {total_batches} batch(es)")
+        logger.info(f"[{source}] Fetching {len(urls_to_fetch)} URLs via Tavily")
         
-        processed_urls = set()  # URLs that got a response from Tavily (success or extraction failed)
-        failed_batch_urls = set()  # URLs where Tavily API call failed (should retry)
+        remaining_urls = list(urls_to_fetch)
+        max_retries = 5
         
-        for batch_idx in range(0, len(urls_to_fetch), batch_size):
-            batch_urls = urls_to_fetch[batch_idx:batch_idx + batch_size]
-            batch_num = batch_idx // batch_size + 1
-            logger.info(f"[{source}] Processing batch {batch_num}/{total_batches} ({len(batch_urls)} URLs)")
-            
-            try:
-                # Batch API call for current batch
-                response = self.tavily_client.extract(
-                    urls=batch_urls,
-                    extract_depth="advanced"
-                )
+        # Round-based retry logic
+        for attempt in range(max_retries):
+            if not remaining_urls:
+                break
                 
-                if response and response.get('results'):
+            if attempt > 0:
+                # Exponential backoff: 2^attempt + jitter
+                wait_time = (2 ** attempt) + random.uniform(0, 1)
+                logger.info(f"[{source}] Retrying Tavily API (attempt {attempt+1}/{max_retries}) in {wait_time:.2f}s...")
+                time.sleep(wait_time)
+            
+            current_round_urls = list(remaining_urls)
+            batch_size = 20
+            
+            for batch_idx in range(0, len(current_round_urls), batch_size):
+                batch_urls = current_round_urls[batch_idx:batch_idx + batch_size]
+                batch_num = batch_idx // batch_size + 1
+                logger.info(f"[{source}] Processing Tavily batch {batch_num} ({len(batch_urls)} URLs), attempt {attempt+1}")
+                
+                try:
+                    # Batch API call for current batch
+                    response = self.tavily_client.extract(
+                        urls=batch_urls,
+                        extract_depth="advanced"
+                    )
+                    
+                    if not response or not response.get('results'):
+                        # Empty response - will retry in next round
+                        logger.warning(f"[{source}] Empty Tavily response for batch {batch_num} (round {attempt+1})")
+                        continue
+
                     results = response['results']
                     logger.debug(f"[{source}] Batch {batch_num} returned {len(results)} results")
                     
@@ -370,49 +415,41 @@ class AbstractExtractor:
                                     matched_url = orig_url
                                     break
                         
-                        if matched_paper and matched_url not in processed_urls:
+                        if matched_paper and matched_url in remaining_urls:
                             batch_responded_urls.add(matched_url)
+                            remaining_urls.remove(matched_url)
+                            
                             # Extract abstract and categories from raw content
                             abstract, categories = self._extract_from_tavily_content(raw_content, source)
                             
                             # Always mark as processed (Tavily returned data)
-                            # If extraction failed, set empty summary - don't retry
+                            # If extraction failed, set empty summary - don't retry as per requirements
                             matched_paper['summary'] = abstract if abstract else ""
                             if categories and not matched_paper.get('category'):
                                 matched_paper['category'] = categories
-                            papers_with_abs.append(matched_paper)
-                            processed_urls.add(matched_url)
                             
                             if abstract:
+                                papers_with_abs.append(matched_paper)
                                 logger.debug(f"[{source}] Extracted abstract for URL: {matched_url}")
                             else:
+                                papers_without_abs.append(matched_paper)
                                 logger.debug(f"[{source}] Tavily returned but no abstract extracted for URL: {matched_url}")
                     
-                    # URLs in batch that didn't get a response - should retry
-                    for batch_url in batch_urls:
-                        if batch_url not in batch_responded_urls and batch_url not in processed_urls:
-                            failed_batch_urls.add(batch_url)
-                else:
-                    # Empty response - all URLs in this batch should retry
-                    logger.warning(f"[{source}] Empty Tavily response for batch {batch_num}")
-                    for batch_url in batch_urls:
-                        if batch_url not in processed_urls:
-                            failed_batch_urls.add(batch_url)
+                    # URLs in batch that didn't get a response will remain in remaining_urls for next round retry
                     
-            except Exception as e:
-                # API error - all URLs in this batch should retry
-                logger.error(f"[{source}] Tavily batch {batch_num} API error: {e}")
-                for batch_url in batch_urls:
-                    if batch_url not in processed_urls:
-                        failed_batch_urls.add(batch_url)
+                except Exception as e:
+                    # API error - all URLs in this batch will remain in remaining_urls for next round retry
+                    logger.error(f"[{source}] Tavily batch {batch_num} API error (round {attempt+1}): {e}")
         
-        # Add papers where Tavily API failed (no response) to retry list
-        for url, paper in url_to_paper.items():
-            if url not in processed_urls and url in failed_batch_urls:
-                papers_without_abs.append(paper)
+        # After all retries, any remaining URLs are considered permanently failed
+        if remaining_urls:
+            for url in remaining_urls:
+                paper = url_to_paper[url]
+                paper_failed.append(paper)
+                logger.error(f"[{source}] Tavily API failed after {max_retries} attempts for URL: {url}")
         
-        logger.info(f"[{source}] Tavily total: {len(papers_with_abs)} success, {len(papers_without_abs)} failed")
-        return papers_with_abs, papers_without_abs
+        logger.info(f"[{source}] Tavily final results: {len(papers_with_abs)} success, {len(papers_without_abs)} no abstract found, {len(paper_failed)} failed")
+        return papers_with_abs, papers_without_abs, paper_failed
     
     def _urls_match(self, url1: str, url2: str) -> bool:
         """
