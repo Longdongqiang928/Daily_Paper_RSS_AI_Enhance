@@ -299,7 +299,7 @@ def convert_to_md_main(
     logger.info(f"Language: {language}")
     logger.info("="*60)
     
-    result = convert_date_to_md(date, data_dir, language, force=False)
+    result = convert_date_to_md(date, data_dir, language, force=True)
     
     if result:
         logger.info(f"MD conversion completed: {result}")

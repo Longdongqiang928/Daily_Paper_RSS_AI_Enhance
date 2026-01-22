@@ -18,7 +18,6 @@ import time
 import random
 from typing import List, Dict, Optional, Tuple
 import requests
-import xml.etree.ElementTree as ET
 from tavily import TavilyClient
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -202,8 +201,7 @@ class AbstractExtractor:
         
         Raises:
             requests.RequestException: If the network request fails or returns error status.
-            ValueError: If the response is empty.
-            ET.ParseError: If the XML parsing fails.
+            ValueError: If the response is empty or invalid JSON.
         """
         papers = []
         
@@ -213,11 +211,11 @@ class AbstractExtractor:
             return papers
         
         query_str = ' OR '.join([f'doi:"{doi}"' for doi in dois])
-        url = f'https://api.springernature.com/meta/v2/pam?api_key={api_key}&callback=&s=1&p=25&q=({query_str})'
+        url = f'https://api.springernature.com/metadata/json?api_key={api_key}&callback=&s=1&p=25&q=({query_str})'
         
         response = requests.get(url, timeout=30)
         
-        # Log response status and result (first round or retry)
+        # Log response status
         logger.debug(f"[{source}] Nature API request: {url} | Status: {response.status_code}")
         
         response.raise_for_status()
@@ -226,86 +224,53 @@ class AbstractExtractor:
             raise ValueError("Empty response content from Nature API")
             
         try:
-            root = ET.fromstring(response.content)
+            data = response.json()
+            records = data.get('records', [])
+            logger.info(f"[{source}] Found {len(records)} articles in API response")
             
-            namespaces = {
-                'pam': 'http://prismstandard.org/namespaces/pam/2.2/',
-                'xhtml': 'http://www.w3.org/1999/xhtml',
-                'dc': 'http://purl.org/dc/elements/1.1/',
-                'prism': 'http://prismstandard.org/namespaces/basic/2.2/'
-            }
-            
-            articles = root.findall('.//pam:article', namespaces)
-            logger.info(f"[{source}] Found {len(articles)} articles in API response")
-            
-            for idx, article in enumerate(articles):
-                paper = self._parse_nature_article(article, namespaces, source, idx)
+            for idx, record in enumerate(records):
+                paper = self._parse_nature_article(record, source, idx)
                 if paper:
                     papers.append(paper)
-        except ET.ParseError as e:
-            logger.error(f"[{source}] Error parsing XML from Nature API: {e}")
+        except Exception as e:
+            logger.error(f"[{source}] Error parsing JSON from Nature API: {e}")
             raise
         
         return papers
     
-    def _parse_nature_article(self, article, namespaces: Dict, source: str, idx: int) -> Optional[Dict]:
+    def _parse_nature_article(self, record: Dict, source: str, idx: int) -> Optional[Dict]:
         """
-        Parse a single article from Nature API response.
+        Parse a single article from Nature API JSON response.
         """
-        head = article.find('xhtml:head', namespaces)
-        if head is None:
-            logger.warning(f"[{source}] No head element found for article {idx}")
-            return None
+        article_doi = record.get('doi')
+        if not article_doi:
+            # Fallback to identifier if doi is missing
+            identifier = record.get('identifier', '')
+            if identifier.startswith('doi:'):
+                article_doi = identifier.replace('doi:', '')
+            else:
+                logger.warning(f"[{source}] No DOI found for article {idx}")
+                return None
         
-        doi_elem = head.find('.//prism:doi', namespaces)
-        if doi_elem is None or doi_elem.text is None:
-            logger.warning(f"[{source}] No DOI found for article {idx}")
-            return None
+        # Extract abstract
+        abstract_text = record.get('abstract', '')
         
-        article_doi = doi_elem.text
-        
-        # Extract abstract from body
-        body = article.find('xhtml:body', namespaces)
-        abstract_paragraphs = []
-        
-        if body is not None:
-            found_abstract_heading = False
-            for elem in body:
-                if elem.tag == '{http://www.w3.org/1999/xhtml}h1' and elem.text and 'Abstract' in elem.text:
-                    found_abstract_heading = True
-                    logger.debug(f"[{source}] Found abstract heading for DOI {article_doi}")
-                elif found_abstract_heading and elem.tag == '{http://www.w3.org/1999/xhtml}p':
-                    if elem.text:
-                        abstract_paragraphs.append(elem.text.strip())
-                elif found_abstract_heading and elem.tag == '{http://www.w3.org/1999/xhtml}h1':
-                    break
-        
-        if not abstract_paragraphs:
+        if not abstract_text:
             logger.debug(f"[{source}] No abstract found for DOI {article_doi}")
             return None
-        
-        abstract_text = ' '.join(abstract_paragraphs)
-        if len(abstract_text) > 3000:
+            
+        if isinstance(abstract_text, str) and len(abstract_text) > 3000:
             abstract_text = abstract_text[:3000] + '...'
         
         # Extract metadata
-        journal = head.find('.//prism:publicationName', namespaces)
-        journal = journal.text if journal is not None else ''
+        journal = record.get('publicationName', '')
+        title = record.get('title', '')
         
-        title = head.find('.//dc:title', namespaces)
-        title = title.text if title is not None else ''
+        creators = record.get('creators', [])
+        authors = [c.get('creator', '') for c in creators if c.get('creator')]
         
-        authors = [a.text for a in head.findall('.//dc:creator', namespaces) if a.text]
-        
-        published = head.find('.//prism:publicationDate', namespaces)
-        published = published.text if published is not None else ''
-        
-        subjects = head.findall('.//dc:subject', namespaces)
-        categories = []
-        for subj in subjects:
-            if subj.text:
-                categories.extend(subj.text.split(', '))
-        categories = list(set(categories))
+        published = record.get('publicationDate', '')
+        categories = record.get('subjects', [])
         
         paper = {
             'journal': journal,
@@ -420,7 +385,7 @@ class AbstractExtractor:
                             remaining_urls.remove(matched_url)
                             
                             # Extract abstract and categories from raw content
-                            abstract, categories = self._extract_from_tavily_content(raw_content, source, matched_url)
+                            abstract, categories = self._extract_from_tavily_content(raw_content, source)
                             
                             # Always mark as processed (Tavily returned data)
                             # If extraction failed, set empty summary - don't retry as per requirements
