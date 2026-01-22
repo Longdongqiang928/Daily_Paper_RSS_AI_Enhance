@@ -511,7 +511,7 @@ class AbstractExtractor:
                   content = match.group(1).strip()
                   # Filter out "Structured Abstract" and "Editor's summary" if they accidentally matched
                   # and ensure it's not just a list of links (common in Science sidebar)
-                  if len(content) > 100 and "INTRODUCTION" not in content[:200] and "Editor’s summary" not in content:
+                  if len(content) > 150 and "INTRODUCTION" not in content[:200] and "Editor’s summary" not in content and "This website requires cookies to function properly" not in content:
                       return self._clean_abstract_text(content)
           
           return ""
@@ -528,7 +528,7 @@ class AbstractExtractor:
             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
             if match:
                 content = match.group(1).strip()
-                if len(content) > 100:
+                if len(content) > 150:
                     return self._clean_abstract_text(content)
         return ""
 
@@ -544,7 +544,7 @@ class AbstractExtractor:
             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
             if match:
                 content = match.group(1).strip()
-                if len(content) > 100:
+                if len(content) > 150:
                     return self._clean_abstract_text(content)
         return ""
 
@@ -564,7 +564,7 @@ class AbstractExtractor:
              match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
              if match:
                  content = match.group(1).strip()
-                 if len(content) > 100:
+                 if len(content) > 150:
                      return self._clean_abstract_text(content)
          return ""
 
@@ -580,7 +580,7 @@ class AbstractExtractor:
             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
             if match:
                 content = match.group(1).strip()
-                if len(content) > 100:
+                if len(content) > 150:
                     return self._clean_abstract_text(content)
         return ""
 
@@ -595,7 +595,7 @@ class AbstractExtractor:
             match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
             if match:
                 content = match.group(1).strip()
-                if len(content) > 100:
+                if len(content) > 150:
                     return self._clean_abstract_text(content)
         return ""
 
@@ -616,7 +616,7 @@ class AbstractExtractor:
             if match:
                 abstract = match.group(1).strip()
                 abstract = self._clean_abstract_text(abstract)
-                if len(abstract) > 100:
+                if len(abstract) > 150:
                     return abstract
         
         # Final fallback: if no "Abstract" keyword, but there is substantial text
