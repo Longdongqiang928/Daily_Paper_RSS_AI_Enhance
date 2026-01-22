@@ -224,14 +224,20 @@ class ZoteroRecommender:
                     key=lambda x: datetime.strptime(x['data']['dateAdded'], '%Y-%m-%dT%H:%M:%SZ'),
                     reverse=True
                 )
-                time_decay_weight = 1 / (1 + np.log10(np.arange(len(collection_corpus)) + 1))
-                time_decay_weight = time_decay_weight / time_decay_weight.sum()
-                
                 # Get embeddings using OpenAI-compatible API
                 corpus_texts = [paper['data']['abstractNote'] for paper in collection_corpus]
                 
                 logger.debug(f"[{source}] Getting embeddings for collection: {collection}")
                 corpus_embeddings = self.get_embeddings(corpus_texts, collection)
+                
+                if len(corpus_embeddings) == 0:
+                    logger.warning(f"[{source}] No embeddings found for collection: {collection}")
+                    idx_collection += 1
+                    continue
+
+                # Compute time decay weight based on actual embedding count
+                time_decay_weight = 1 / (1 + np.log10(np.arange(len(corpus_embeddings)) + 1))
+                time_decay_weight = time_decay_weight / time_decay_weight.sum()
                 
                 # Compute similarity
                 sim = self.compute_similarity(candidate_embeddings, corpus_embeddings)
