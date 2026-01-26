@@ -16,3 +16,4 @@ data/
 data/cache
 logs/
 *.log
+.trae/
