@@ -155,31 +155,26 @@ class AbstractExtractor:
                 try:
                     fetched_papers = self._fetch_nature_api_batch(batch, source)
                     
-                    # Success: These DOIs are processed (either found or not found in response)
-                    fetched_dois_map = {fp.get('id'): fp for fp in fetched_papers}
+                    fetched_dois_map = {fp.get('id'): fp for fp in fetched_papers if fp.get('id')}
                     
-                    for doi in batch:
+                    for doi, fp in fetched_dois_map.items():
                         if doi in remaining_dois:
                             remaining_dois.remove(doi)
                         
-                        original = doi_to_paper[doi]
-                        if doi in fetched_dois_map:
-                            fp = fetched_dois_map[doi]
-                            # Merge fetched data with original paper
-                            original['summary'] = fp.get('summary', '')
-                            if fp.get('category'):
-                                original['category'] = fp['category']
-                            if fp.get('journal') and not original.get('journal'):
-                                original['journal'] = fp['journal']
-                            if fp.get('authors') and not original.get('authors'):
-                                original['authors'] = fp['authors']
-                            if fp.get('published') and not original.get('published'):
-                                original['published'] = fp['published']
-                            papers_with_abs.append(original)
-                        else:
-                            # Not found in successful API response - don't retry as per requirements
-                            logger.debug(f"[{source}] DOI {doi} not found in Nature API response")
-                            papers_without_abs.append(original)
+                        original = doi_to_paper.get(doi)
+                        if not original:
+                            continue
+                        
+                        original['summary'] = fp.get('summary', '')
+                        if fp.get('category'):
+                            original['category'] = fp['category']
+                        if fp.get('journal') and not original.get('journal'):
+                            original['journal'] = fp['journal']
+                        if fp.get('authors') and not original.get('authors'):
+                            original['authors'] = fp['authors']
+                        if fp.get('published') and not original.get('published'):
+                            original['published'] = fp['published']
+                        papers_with_abs.append(original)
                             
                 except Exception as e:
                     # Request failed, empty response, or parsing error - keep DOIs for next round retry
@@ -191,7 +186,7 @@ class AbstractExtractor:
             for doi in remaining_dois:
                 paper = doi_to_paper[doi]
                 paper_failed.append(paper)
-                logger.error(f"[{source}] Nature API failed after {max_retries} attempts for DOI: {doi}. Last error info: {paper.get('abs')}")
+                logger.warning(f"[{source}] Nature API failed after {max_retries} attempts for DOI: {doi}. Last error info: {paper.get('abs')}")
         
         return papers_with_abs, papers_without_abs, paper_failed
     
@@ -404,14 +399,14 @@ class AbstractExtractor:
                     
                 except Exception as e:
                     # API error - all URLs in this batch will remain in remaining_urls for next round retry
-                    logger.error(f"[{source}] Tavily batch {batch_num} API error (round {attempt+1}): {e}")
+                    logger.warning(f"[{source}] Tavily batch {batch_num} API error (round {attempt+1}): {e}")
         
         # After all retries, any remaining URLs are considered permanently failed
         if remaining_urls:
             for url in remaining_urls:
                 paper = url_to_paper[url]
                 paper_failed.append(paper)
-                logger.error(f"[{source}] Tavily API failed after {max_retries} attempts for URL: {url}")
+                logger.warning(f"[{source}] Tavily API failed after {max_retries} attempts for URL: {url}")
         
         logger.info(f"[{source}] Tavily final results: {len(papers_with_abs)} success, {len(papers_without_abs)} no abstract found, {len(paper_failed)} failed")
         return papers_with_abs, papers_without_abs, paper_failed
