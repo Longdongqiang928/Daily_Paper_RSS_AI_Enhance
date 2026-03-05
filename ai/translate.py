@@ -52,14 +52,14 @@ class SummaryTranslator:
                 model=self.model_name,
                 api_base=config.NEWAPI_BASE_URL,
                 api_key=config.NEWAPI_KEY_AD,
-                max_tokens=4000
+                max_tokens=128000
             )
         else:
             llm = ChatOpenAI(
                 model=self.model_name,
                 base_url=config.NEWAPI_BASE_URL,
                 api_key=config.NEWAPI_KEY_AD,
-                max_tokens=4000
+                max_tokens=128000
             )
         
         translation_prompt = ChatPromptTemplate.from_messages([

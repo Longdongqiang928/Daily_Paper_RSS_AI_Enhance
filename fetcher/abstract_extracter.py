@@ -559,7 +559,7 @@ class AbstractExtractor:
              match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
              if match:
                  content = match.group(1).strip()
-                 if len(content) > 150:
+                 if len(content) > 150 and 'Radware Captcha Page' not in content:
                      return self._clean_abstract_text(content)
          return ""
 
