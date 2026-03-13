@@ -66,7 +66,7 @@ class AIEnhancer:
                 api_base=config.NEWAPI_BASE_URL,
                 # base_url=self.base_url,
                 api_key=config.NEWAPI_KEY_AD,
-                max_tokens=128000
+                max_tokens=32000
             ).with_structured_output(Structure)
             logger.info(f"Connected to DeepSeek LLM: {self.model_name}")
         else:
@@ -74,7 +74,7 @@ class AIEnhancer:
                 model=self.model_name,
                 base_url=config.NEWAPI_BASE_URL,
                 api_key=config.NEWAPI_KEY_AD,
-                max_tokens=128000
+                max_tokens=32000
             ).with_structured_output(Structure)
             logger.info(f"Connected to OpenAI-compatible LLM: {self.model_name}")
 
