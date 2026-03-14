@@ -55,6 +55,17 @@ def parse_args():
     
     return parser.parse_args()
 
+def unload_model_safely():
+    """Safely attempt to unload model from LM Studio"""
+    try:
+        import lmstudio as lms
+        print("Unloading model...")
+        model = lms.llm()
+        model.unload()
+        print("Model unloaded.")
+    except (ImportError, Exception) as e:
+        print(f"Model unload skipped: {e}")
+
 def main(config, date=None):
     """Daily update: fetch new papers and process them (no cache)"""
     if date is None:
@@ -69,6 +80,7 @@ def main(config, date=None):
     
     # Convert to markdown if not already exists
     convert_to_md_main(date, config.output_dir, config.language)
+    unload_model_safely()
 
     # Write list of files in data folder to file-list.txt
     data_dir = config.output_dir
@@ -103,6 +115,8 @@ def main_week_check(config):
             
             # Convert to markdown if not already exists
             convert_to_md_main(output, config.output_dir, config.language)
+    
+        unload_model_safely()
 
         # Write list of files in data folder to file-list.txt
         data_dir = config.output_dir
@@ -134,6 +148,7 @@ def main_full_check(config):
             # Convert to markdown if not already exists
             convert_to_md_main(output, config.output_dir, config.language)
 
+        unload_model_safely()
         # Write list of files in data folder to file-list.txt
         data_dir = config.output_dir
         if os.path.exists(data_dir) and os.path.isdir(data_dir):
