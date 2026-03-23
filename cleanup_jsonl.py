@@ -32,7 +32,14 @@ def cleanup_files(prefixes, data_dir, exclude_sources=['arxiv', 'nature'], remov
 
     for file_path in all_target_files:
         try:
-            # 读取所有行
+            filename = os.path.basename(file_path)
+            # 如果是 AI 增强的文件，直接删除
+            if '_AI_enhanced_' in filename:
+                os.remove(file_path)
+                print(f"已删除 AI 增强文件: {file_path}")
+                continue
+
+            # 对于原始文件，读取并清理指定字段
             with io.open(file_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             
