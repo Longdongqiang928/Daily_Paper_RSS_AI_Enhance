@@ -1,3 +1,20 @@
+⚠️ **Important Notice**
+> 📢 This project is no longer maintained. All features have been migrated and upgraded to the new LifeForge Paper Library module:
+> **[https://github.com/Longdongqiang928/Lifeforge-Paper-Library](https://github.com/Longdongqiang928/Lifeforge-Paper-Library)**
+>
+> The new system offers significant advantages over this project:
+> - ✅ Unified workflow integrating RSS collection, abstract repair, personalized recommendation, and AI enhancement in one place, no more scattered scripts
+> - ✅ Shared paper pool + separate user data model, no duplicate fetching and processing of the same paper when used by multiple people
+> - ✅ Built-in scheduler, no need for extra cron configuration, supports both automatic scheduled runs and manual workflow triggering
+> - ✅ More comprehensive Web UI: scored papers landing page, folder-based favorites management, manual abstract review and correction, JSON/JSONL import, run history viewer, etc.
+> - ✅ Incremental processing mechanism with input hashing to avoid reprocessing unchanged content, greatly improving operational efficiency
+> - ✅ Deep integration with the LifeForge ecosystem, unified theme, and support for more extended features
+> - ✅ Supports automatic completion and manual correction of missing abstracts, greatly improving paper information completeness
+>
+> All users are advised to migrate to the new system. This repository will no longer receive maintenance updates.
+
+---
+
 # Daily Paper RSS AI Enhance
 
 [中文](README.md) | **English**
